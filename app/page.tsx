@@ -359,10 +359,43 @@ function PlanViewV2({ childList, selectedChildId, onSelectChild, goals, evaluati
   return <><Header title="Kế hoạch giáo dục" actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} /><div className="plan-toolbar"><SelectField label="Đang xem hồ sơ của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /><div className="plan-count"><span className="count-number">{childGoals.length}</span><span>mục tiêu đang theo dõi</span></div></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="calendar" size={21} /> MỤC TIÊU PHÁT TRIỂN</h2><p>Các mục tiêu được cài đặt riêng cho {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt (Đ)</span><span><i className="yellow-dot" />Manh nha (MN)</span><span><i className="gray-dot" />Chưa đạt (CĐ)</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} onStatusChange={onStatusChange} onNoteClick={onNoteClick} onAddDomain={onAddDomain} onAddLong={onAddLong} onAddShort={onAddShort} onAddPeriod={onAddPeriod} onEditLong={onEditLong} onDeleteGoal={onDeleteGoal} onEditShort={onEditShort} onDeleteShort={onDeleteShort} /></>;
 }
 
-const OVERVIEW_CALENDAR_DAYS: Array<number | null> = [null, ...Array.from({ length: 30 }, (_, index) => index + 1), null, null, null, null];
+type OverviewCalendarCell = { day: number; date: Date; muted: boolean };
+
+function getOverviewCalendarCells(cursor: Date): OverviewCalendarCell[] {
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const leadingDays = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+  const cells: OverviewCalendarCell[] = [];
+
+  for (let index = leadingDays - 1; index >= 0; index -= 1) {
+    const day = previousMonthDays - index;
+    cells.push({ day, date: new Date(year, month - 1, day), muted: true });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push({ day, date: new Date(year, month, day), muted: false });
+  }
+
+  let nextDay = 1;
+  while (cells.length < 42) {
+    cells.push({ day: nextDay, date: new Date(year, month + 1, nextDay), muted: true });
+    nextDay += 1;
+  }
+
+  return cells;
+}
 
 function OverviewCalendar() {
-  return <section className="overview-calendar" aria-label="Lịch kế hoạch"><div className="overview-calendar-head"><div><span className="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>Tháng 6 2026</strong></div><span className="overview-calendar-icon"><Icon name="calendar" size={21} /></span></div><div className="overview-calendar-weekdays">{["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day) => <span key={day}>{day}</span>)}</div><div className="overview-calendar-days">{OVERVIEW_CALENDAR_DAYS.map((day, index) => <span key={`${day ?? "empty"}-${index}`} className={day === 30 ? "is-selected" : day === null ? "is-empty" : ""}>{day}</span>)}</div></section>;
+  const today = new Date();
+  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const cells = useMemo(() => getOverviewCalendarCells(cursor), [cursor]);
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  const monthTitle = new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(cursor);
+
+  return <section className="overview-calendar" aria-label="Lịch kế hoạch"><div className="overview-calendar-head"><div><span className="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>{monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}</strong></div><div className="overview-calendar-controls"><button type="button" className="overview-calendar-today" onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}>Hôm nay</button><button type="button" className="overview-calendar-nav" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} aria-label="Tháng trước"><Icon name="back" size={17} /></button><button type="button" className="overview-calendar-nav is-next" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} aria-label="Tháng sau"><Icon name="back" size={17} /></button><button type="button" className="overview-calendar-view">Tháng <Icon name="chevron" size={15} /></button><span className="overview-calendar-icon"><Icon name="calendar" size={20} /></span></div></div><div className="overview-calendar-weekdays">{["THỨ 2", "THỨ 3", "THỨ 4", "THỨ 5", "THỨ 6", "THỨ 7", "CHỦ NHẬT"].map((day) => <span key={day}>{day}</span>)}</div><div className="overview-calendar-days">{cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; return <span key={`${key}-${index}`} className={`${cell.muted ? "is-muted" : ""} ${isSunday ? "is-sunday" : ""} ${isToday ? "is-today" : ""}`}>{cell.day}</span>; })}</div></section>;
 }
 
 function OverviewViewV2({ childList, selectedChildId, onSelectChild, goals, evaluationPeriods, onOpenPlan }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; evaluationPeriods: string[]; onOpenPlan: () => void }) {

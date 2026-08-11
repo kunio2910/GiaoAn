@@ -122,10 +122,35 @@
     main.innerHTML = `<div class="share-page"><div class="share-container"><header class="share-header"><div class="share-brand"><span class="share-brand-mark">${icon('target')}</span><div><strong>KẾ HOẠCH GIÁO DỤC</strong><small>Trang chia sẻ hồ sơ trẻ</small></div></div><span class="share-readonly">${icon('file')}Chỉ xem</span></header><section class="share-hero"><span class="share-eyebrow">HỒ SƠ TRẺ</span><h1>${esc(child.name)}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section>${childSummaryMarkup(child)}<div class="share-summary"><span><strong>${goals.length}</strong> mục tiêu đang theo dõi</span><span><strong>${achieved}</strong> kết quả đạt</span><span>Không cho phép chỉnh sửa</span></div><section class="share-goals"><div class="share-section-heading"><div><span class="share-eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><span class="share-lock">${icon('file')}Chế độ chỉ xem</span></div>${renderGoalsTable(goals, true)}</section><footer class="share-footer">Đường dẫn này chỉ hiển thị thông tin của <strong>${esc(child.name)}</strong>.</footer></div></div>`;
   }
 
-  const overviewCalendarDays = [null, ...Array.from({ length: 30 }, (_, index) => index + 1), null, null, null, null];
+  const overviewCalendarToday = new Date();
+  let overviewCalendarCursor = new Date(overviewCalendarToday.getFullYear(), overviewCalendarToday.getMonth(), 1);
+  function getOverviewCalendarCells(year, month) {
+    const firstDay = new Date(year, month, 1);
+    const leadingDays = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const previousMonthDays = new Date(year, month, 0).getDate();
+    const cells = [];
+    for (let index = leadingDays - 1; index >= 0; index -= 1) {
+      const day = previousMonthDays - index;
+      cells.push({ day, date: new Date(year, month - 1, day), muted: true });
+    }
+    for (let day = 1; day <= daysInMonth; day += 1) cells.push({ day, date: new Date(year, month, day), muted: false });
+    let nextDay = 1;
+    while (cells.length < 42) {
+      cells.push({ day: nextDay, date: new Date(year, month + 1, nextDay), muted: true });
+      nextDay += 1;
+    }
+    return cells;
+  }
   function overviewCalendarMarkup() {
     const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>Tháng 6 2026</strong></div><span class="overview-calendar-icon">${icon('calendar')}</span></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${overviewCalendarDays.map((day, index) => `<span class="${day === 30 ? 'is-selected' : day === null ? 'is-empty' : ''}" data-day-index="${index}">${day ?? ''}</span>`).join('')}</div></section>`;
+    const year = overviewCalendarCursor.getFullYear();
+    const month = overviewCalendarCursor.getMonth();
+    const monthTitle = new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(overviewCalendarCursor);
+    const title = monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
+    const todayKey = `${overviewCalendarToday.getFullYear()}-${overviewCalendarToday.getMonth()}-${overviewCalendarToday.getDate()}`;
+    const cells = getOverviewCalendarCells(year, month);
+    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>${title}</strong></div><div class="overview-calendar-controls"><button type="button" class="overview-calendar-today" data-calendar-action="today">Hôm nay</button><button type="button" class="overview-calendar-nav" data-calendar-action="previous" aria-label="Tháng trước">${icon('back')}</button><button type="button" class="overview-calendar-nav is-next" data-calendar-action="next" aria-label="Tháng sau">${icon('back')}</button><button type="button" class="overview-calendar-view">Tháng ${icon('chevron')}</button><span class="overview-calendar-icon">${icon('calendar')}</span></div></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; return `<span class="${cell.muted ? 'is-muted' : ''} ${isSunday ? 'is-sunday' : ''} ${isToday ? 'is-today' : ''}">${cell.day}</span>`; }).join('')}</div></section>`;
   }
 
   function renderOverview() {
@@ -258,6 +283,14 @@
   document.addEventListener('click', (event) => {
     const viewButton = event.target.closest('[data-view]');
     if (viewButton) { if (viewButton.dataset.view === 'objective') { draftShortGoals = [...defaultShortGoals]; draftLongTerm = defaultLongTerm; } navigate(viewButton.dataset.view); return; }
+    const calendarAction = event.target.closest('[data-calendar-action]')?.dataset.calendarAction;
+    if (calendarAction) {
+      if (calendarAction === 'today') overviewCalendarCursor = new Date(overviewCalendarToday.getFullYear(), overviewCalendarToday.getMonth(), 1);
+      if (calendarAction === 'previous') overviewCalendarCursor = new Date(overviewCalendarCursor.getFullYear(), overviewCalendarCursor.getMonth() - 1, 1);
+      if (calendarAction === 'next') overviewCalendarCursor = new Date(overviewCalendarCursor.getFullYear(), overviewCalendarCursor.getMonth() + 1, 1);
+      renderOverview();
+      return;
+    }
     const action = event.target.closest('[data-action]');
     if (action) {
       if (action.dataset.action === 'open-child') openChildModal();
