@@ -66,14 +66,14 @@ const initialGoals: Goal[] = [
   },
 ];
 
-function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "bell"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   const paths: Record<string, React.ReactNode> = {
     plan: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z" /><path d="M4 5.5v16" /><path d="M8 7h8M8 11h8M8 15h5" /></>,
     children: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0" /><circle cx="17.5" cy="10" r="2.2" /><path d="M15.5 16.8a4.2 4.2 0 0 1 5 3.2" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-2.6V20a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 8 15a1.7 1.7 0 0 0-1.6-1H6v-2.6h.4A1.7 1.7 0 0 0 8 10a1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2H15v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2V14h-.2a1.7 1.7 0 0 0-1.6 1z" /></>,
     target: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4" /><path d="m16.5 7.5 3-3M19.5 4.5v3h-3" /></>,
-    note: <><path d="M5 3.8h10.5L19 7.3V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.8a1 1 0 0 1 1-1z" /><path d="M15 3.8V8h4M7.5 12h9M7.5 16h6" /><path d="m15.5 18.5 1.3 1.3 3.2-3.2" /></>,
+    note: <><path d="M4.5 5h15v11H10l-4.5 4V5z" /><path d="M8 9h8M8 12h5" /></>,
     chevron: <path d="m7 9 5 5 5-5" />,
     plus: <><path d="M12 5v14M5 12h14" /></>,
     edit: <><path d="M4 16.5V20h3.5L18.8 8.7a2.1 2.1 0 0 0-3-3z" /><path d="m14.5 7.5 2 2" /></>,
@@ -82,6 +82,8 @@ function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "t
     user: <><circle cx="12" cy="8" r="3" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
     save: <><path d="M5 4h12l2 2v14H5z" /><path d="M8 4v5h8V4M8 20v-6h8v6" /></>,
     back: <><path d="M19 12H5M11 6l-6 6 6 6" /></>,
+    file: <><path d="M6 3.5h8l4 4V20.5H6z" /><path d="M14 3.5v5h4M9 13h6M9 16h6" /></>,
+    bell: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -101,8 +103,8 @@ function Sidebar({ active, onChange }: { active: View; onChange: (view: View) =>
   return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
 }
 
-function Header({ title, subtitle, actionLabel, onAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; onAction?: () => void; onBack?: () => void }) {
-  return <header className="topbar"><div className="topbar-title">{onBack && <button className="back-button" type="button" onClick={onBack} aria-label="Quay lại"><Icon name="back" size={24} /></button>}<div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div></div>{actionLabel && <button className="button primary" type="button" onClick={onAction}><Icon name="plus" size={18} />{actionLabel}</button>}</header>;
+function Header({ title, subtitle, actionLabel, actionIcon = "plus", onAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; actionIcon?: "plus" | "file"; onAction?: () => void; onBack?: () => void }) {
+  return <header className="topbar"><div className="topbar-title">{onBack && <button className="back-button" type="button" onClick={onBack} aria-label="Quay lại"><Icon name="back" size={24} /></button>}<div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div></div><div className="topbar-actions"><button className="icon-button notification" type="button" aria-label="Thông báo"><Icon name="bell" size={19} /><b>3</b></button><div className="date-pill"><span>30/06/2026</span><Icon name="calendar" size={17} /></div>{actionLabel && <button className="button primary" type="button" onClick={onAction}><Icon name={actionIcon} size={17} />{actionLabel}</button>}</div></header>;
 }
 
 function SelectField({ label, value, onChange, options, required = false }: { label: string; value: string; onChange: (value: string) => void; options: string[]; required?: boolean }) {
@@ -118,7 +120,7 @@ function ChildAvatar({ name, large = false }: { name: string; large?: boolean })
 }
 
 function ChildSummary({ child }: { child: Child }) {
-  return <section className="child-summary"><ChildAvatar name={child.name} /><div className="summary-name"><strong>{child.name}</strong><span><Icon name="calendar" size={16} /> Ngày sinh: {child.birthday}</span><span><Icon name="user" size={16} /> Giới tính: {child.gender}</span></div><div className="summary-meta"><span><Icon name="target" size={16} /> Mục tiêu được cài đặt riêng cho trẻ</span><span>{child.note || "Chưa có ghi chú cho trẻ này."}</span></div></section>;
+  return <section className="child-summary"><ChildAvatar name={child.name} /><div className="summary-name"><strong>{child.name}</strong><span><Icon name="calendar" size={16} /> Ngày sinh: {child.birthday}</span><span><Icon name="user" size={16} /> Tuổi thực: 1 tuổi 11 tháng</span></div><div className="summary-meta"><span><Icon name="user" size={16} /> Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span><Icon name="calendar" size={16} /> Ngày lập kế hoạch: 30/06/2026</span></div><div className="evaluation-summary"><strong><Icon name="calendar" size={16} /> Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section>;
 }
 
 function StatusSelect({ value, onChange }: { value: Status; onChange: (value: Status) => void }) {
@@ -130,11 +132,11 @@ function GoalsTable({ goals, onStatusChange }: { goals: Goal[]; onStatusChange: 
   return <div className="table-scroll"><table className="goals-table"><thead><tr><th>Lĩnh vực</th><th>Mục tiêu dài hạn</th><th>Mục tiêu ngắn hạn</th>{WEEK_LABELS.map((label) => <th key={label}>{label}</th>)}<th>Ghi chú</th></tr></thead><tbody>{goals.map((goal) => <tr key={goal.id}><td><span className="domain-badge"><Icon name="target" size={16} />{goal.domain}</span></td><td className="long-term-cell">{goal.longTerm}<small>{goal.from} – {goal.to}</small></td><td className="short-term-cell"><ul>{goal.shortTerm.map((item, index) => <li key={`${goal.id}-${index}`}>{item}</li>)}</ul></td>{goal.statuses.map((status, week) => <td className="result-cell" key={`${goal.id}-${week}`}><StatusSelect value={status} onChange={(next) => onStatusChange(goal.id, week, next)} /></td>)}<td className="row-note"><button type="button" aria-label="Ghi chú mục tiêu"><Icon name="note" size={21} /></button></td></tr>)}</tbody></table></div>;
 }
 
-function PlanView({ childList, selectedChildId, onSelectChild, goals, onStatusChange, onAddObjective }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; onStatusChange: (id: number, week: number, status: Status) => void; onAddObjective: () => void }) {
+function PlanView({ childList, selectedChildId, onSelectChild, goals, onStatusChange }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; onStatusChange: (id: number, week: number, status: Status) => void }) {
   const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
   const childGoals = goals.filter((goal) => goal.childId === child?.id);
   if (!child) return <div className="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p></div>;
-  return <><Header title="Kế hoạch giáo dục" subtitle="Theo dõi mục tiêu phát triển riêng cho từng trẻ" actionLabel="Thêm mục tiêu" onAction={onAddObjective} /><div className="plan-toolbar"><SelectField label="Đang xem hồ sơ của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /><div className="plan-count"><span className="count-number">{childGoals.length}</span><span>mục tiêu đang theo dõi</span></div></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="target" size={21} /> Mục tiêu phát triển</h2><p>Các mục tiêu được cài đặt riêng cho {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" /> Đạt</span><span><i className="yellow-dot" /> Manh nha</span><span><i className="gray-dot" /> Chưa đạt</span></div></div><GoalsTable goals={childGoals} onStatusChange={onStatusChange} /></>;
+  return <><Header title="Kế hoạch giáo dục" actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} /><div className="plan-toolbar"><SelectField label="Đang xem hồ sơ của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /><div className="plan-count"><span className="count-number">{childGoals.length}</span><span>mục tiêu đang theo dõi</span></div></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="calendar" size={21} /> Mục tiêu phát triển</h2><p>Các mục tiêu được cài đặt riêng cho {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" /> Đạt</span><span><i className="yellow-dot" /> Manh nha</span><span><i className="gray-dot" /> Chưa đạt</span></div></div><GoalsTable goals={childGoals} onStatusChange={onStatusChange} /></>;
 }
 
 function ChildForm({ child, onCancel, onSave }: { child?: Child; onCancel: () => void; onSave: (child: Omit<Child, "id">) => void }) {
@@ -184,5 +186,5 @@ export default function Home() {
   const saveGoal = (goal: Omit<Goal, "id">) => { setGoals((items) => [...items, { ...goal, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setSelectedChildId(goal.childId); setView("plan"); };
   const navigate = (next: View) => { setView(next); if (next === "objective-form" && !children.length) setShowChildForm(true); };
   const currentView = useMemo(() => view, [view]);
-  return <div className="app-shell"><Sidebar active={currentView} onChange={navigate} /><main className="main-content">{view === "plan" && <PlanView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} onStatusChange={updateStatus} onAddObjective={() => navigate("objective-form")} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}</div>;
+  return <div className="app-shell"><Sidebar active={currentView} onChange={navigate} /><main className="main-content">{view === "plan" && <PlanView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} onStatusChange={updateStatus} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}</div>;
 }
