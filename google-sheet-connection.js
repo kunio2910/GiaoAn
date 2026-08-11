@@ -3,7 +3,7 @@
 
   // Không lưu mật khẩu Google ở đây. Nếu Apps Script của bạn dùng APP_TOKEN,
   // điền đúng token vào biến GIAOAN_APP_TOKEN trong lúc triển khai riêng.
-  const APP_TOKEN = window.GIAOAN_APP_TOKEN || '';
+  const APP_TOKEN = window.GIAOAN_APP_TOKEN || 'giaoan-token-2026-private';
 
   function buildUrl(action) {
     const url = new URL(API_URL);

@@ -1,7 +1,7 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbziIDXCdvxDew-z_xqeX5kA39auPHt_r8pkE7rihGvQ3LMq1uvbd1mcaN69VqzeBhdUpA/exec';
 const APP_TOKEN = typeof process !== 'undefined'
-  ? process.env.NEXT_PUBLIC_GIAOAN_APP_TOKEN ?? ''
-  : '';
+  ? process.env.NEXT_PUBLIC_GIAOAN_APP_TOKEN ?? 'giaoan-token-2026-private'
+  : 'giaoan-token-2026-private';
 
 export type CloudData = Record<string, unknown> & {
   children?: unknown[];
