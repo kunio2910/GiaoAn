@@ -76,6 +76,7 @@
   const tableAdd = (label, action) => `<button type="button" class="table-add-button" data-action="${action}">${icon('plus')}${label}</button>`;
   const statusMarkup = (status, goalId, periodIndex, readOnly) => readOnly ? `<div class="status-select read-only ${status === 'Đạt' ? 'achieved' : status === 'Manh nha' ? 'emerging' : 'not-achieved'}"><span class="status-dot"></span><span>${esc(status)}</span></div>` : `<label class="status-select ${status === 'Đạt' ? 'achieved' : status === 'Manh nha' ? 'emerging' : 'not-achieved'}"><span class="status-dot"></span><select data-goal-id="${goalId}" data-week="${periodIndex}">${statuses.map((item) => `<option ${item === status ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</label>`;
   function renderGoalsTable(goals, readOnly = false) {
+    goals = [...new Set(goals.map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.domain === domain));
     const periods = state.evaluationPeriods?.length ? state.evaluationPeriods : weekLabels;
     const counts = goals.reduce((result, goal) => { result[goal.domain] = (result[goal.domain] || 0) + 1; return result; }, {});
     const rows = goals.map((goal, index) => {
