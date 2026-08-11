@@ -115,6 +115,12 @@
     return `<section class="child-summary">${avatar(child)}<div class="summary-name"><strong>${esc(child.name)}</strong><span>${icon('calendar')}Ngày sinh: ${esc(child.birthday)}</span><span>${icon('user')}Tuổi thực: 1 tuổi 11 tháng</span></div><div class="summary-meta"><span>${icon('user')}Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span>${icon('calendar')}Ngày lập kế hoạch: 30/06/2026</span></div><div class="evaluation-summary"><strong>${icon('calendar')}Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section>`;
   }
 
+  const defaultPlanInfo = { planner: 'Nguyễn Thị Vành Khuyên', planDate: '30/06/2026', evaluationDates: '30/07/2026 và 30/08/2026' };
+  const getPlanInfo = (child) => ({ ...defaultPlanInfo, ...(child?.planInfo || {}) });
+  function childSummaryMarkup(child) {
+    const info = getPlanInfo(child);
+    return `<section class="child-summary">${avatar(child)}<div class="summary-name"><strong>${esc(child.name)}</strong><span>${icon('calendar')}Ngày sinh: ${esc(child.birthday)}</span><span>${icon('user')}Tuổi thực: 1 tuổi 11 tháng</span></div><div class="summary-meta"><span>${icon('user')}Người lập kế hoạch: ${esc(info.planner)}</span><span>${icon('calendar')}Ngày lập kế hoạch: ${esc(info.planDate)}</span><button type="button" class="summary-edit-button" data-action="edit-plan-info">${icon('edit')}Chỉnh sửa thông tin</button></div><div class="evaluation-summary"><strong>${icon('calendar')}Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>${esc(info.evaluationDates)}</b></div></section>`;
+  }
   function renderSharePage() {
     const main = $('.main-content');
     const child = state.children.find((item) => childNameSlug(item.name) === shareChildSlug);
@@ -262,6 +268,8 @@
   function navigate(view) { if (shareMode) return; state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan') renderPlan(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function openChildModal(id) { const child = id ? childById(id) : null; const teachingDays = Array.isArray(child?.teachingDays) ? child.teachingDays : []; $('#child-modal-title').textContent = child ? 'Chỉnh sửa hồ sơ trẻ' : 'Thêm trẻ mới'; $('#child-id').value = child?.id || ''; $('#child-name').value = child?.name || ''; $('#child-birthday').value = birthdayInputValue(child?.birthday || ''); $('#child-gender').value = child?.gender || 'Nữ'; $('#child-note').value = child?.note || ''; $('#child-start-time').value = child?.teachingStartTime || ''; $('#child-end-time').value = child?.teachingEndTime || ''; $('#child-schedule-error').setAttribute('hidden', ''); document.querySelectorAll('[data-teaching-day]').forEach((input) => { input.checked = teachingDays.includes(Number(input.value)); }); $('#child-modal').removeAttribute('hidden'); $('#child-name').focus(); }
   function closeChildModal() { $('#child-modal').setAttribute('hidden', ''); }
+  function openPlanInfoModal() { const child = selectedChild(); if (!child) return; const info = getPlanInfo(child); $('#plan-info-planner').value = info.planner; $('#plan-info-date').value = birthdayInputValue(info.planDate); $('#plan-info-evaluation-dates').value = info.evaluationDates; $('#plan-info-modal').removeAttribute('hidden'); $('#plan-info-planner').focus(); }
+  function closePlanInfoModal() { $('#plan-info-modal').setAttribute('hidden', ''); }
   function openNoteModal(id) { const goal = state.goals.find((item) => item.id === Number(id)); if (!goal) return; $('#note-goal-id').value = goal.id; $('#note-text').value = goal.note || ''; $('#note-modal').removeAttribute('hidden'); $('#note-text').focus(); }
   function closeNoteModal() { $('#note-modal').setAttribute('hidden', ''); }
   function updateObjectivePreview() { const long = $('#objective-long'); const domain = $('#objective-domain'); if (!long || !domain) return; $('#preview-long').textContent = long.value || 'Chưa nhập mục tiêu'; $('#preview-domain').textContent = domain.value.toUpperCase(); const firstList = document.querySelector('.preview-week.open ol'); if (firstList) firstList.innerHTML = draftShortGoals.filter((value) => value.trim()).map((value) => `<li>${esc(value)}</li>`).join(''); const counter = document.querySelector('.objective-textarea small'); if (counter) counter.textContent = `${long.value.length}/500`; }
@@ -383,6 +391,17 @@
     if (select.dataset.goalId) { const goal = state.goals.find((item) => item.id === Number(select.dataset.goalId)); if (goal) { goal.statuses[Number(select.dataset.week)] = select.value; persist(); renderPlan(); } }
   });
   document.addEventListener('input', (event) => { if (event.target.matches('[data-goal-search]')) { const query = event.target.value.trim().toLowerCase(); const cards = [...document.querySelectorAll('[data-goal-card]')]; let visible = 0; cards.forEach((card) => { const matches = !query || card.dataset.search.includes(query); card.hidden = !matches; if (matches) visible += 1; }); const count = document.querySelector('[data-board-count]'); const footerCount = document.querySelector('[data-board-footer-count]'); if (count) count.textContent = String(visible); if (footerCount) footerCount.textContent = String(visible); return; } if (event.target.dataset.shortGoal !== undefined) { draftShortGoals[Number(event.target.dataset.shortGoal)] = event.target.value; updateObjectivePreview(); } if (event.target.id === 'objective-long') { draftLongTerm = event.target.value; updateObjectivePreview(); } });
+  document.addEventListener('click', (event) => { const action = event.target.closest('[data-action]')?.dataset.action; if (action === 'edit-plan-info') openPlanInfoModal(); if (action === 'close-plan-info') closePlanInfoModal(); });
+  document.addEventListener('submit', (event) => {
+    if (event.target.id !== 'plan-info-form') return;
+    event.preventDefault();
+    const child = selectedChild();
+    if (!child) return;
+    child.planInfo = { planner: $('#plan-info-planner').value.trim(), planDate: birthdayDisplayValue($('#plan-info-date').value.trim()), evaluationDates: $('#plan-info-evaluation-dates').value.trim() };
+    persist();
+    closePlanInfoModal();
+    render();
+  });
   document.addEventListener('submit', (event) => {
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();
