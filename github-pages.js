@@ -141,7 +141,7 @@
   }
 
   function renderSettings() {
-    $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Nhắc cập nhật mục tiêu</strong><small>Hiển thị nhắc nhở khi đến kỳ đánh giá.</small></span><input type="checkbox" checked /></label><label class="setting-row"><span><strong>Giao diện gọn</strong><small>Thu gọn khoảng cách trong bảng kế hoạch.</small></span><input type="checkbox" /></label><div class="settings-save"><button type="button" class="button primary" data-action="save-settings">${icon('save')}Lưu cài đặt</button><span id="settings-saved" hidden>Đã lưu thay đổi</span></div></div>`;
+    $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input type="checkbox" data-theme-toggle aria-label="Giao diện tối" /></label><div class="settings-save"><button type="button" class="button primary" data-action="save-settings">${icon('save')}Lưu cài đặt</button><span id="settings-saved" hidden>Đã lưu thay đổi</span></div></div>`;
   }
 
   function navigate(view) { state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan') renderPlan(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -177,6 +177,7 @@
   });
   document.addEventListener('change', (event) => {
     const select = event.target;
+    if (select.matches('[data-theme-toggle]')) { setTheme(select.checked); return; }
     if (select.id === 'overview-child-select') { state.selectedChildId = Number(select.value); renderOverview(); return; }
     if (select.id === 'plan-child-select') { state.selectedChildId = Number(select.value); renderPlan(); return; }
     if (select.id === 'objective-child') { state.selectedChildId = Number(select.value); updateObjectivePreview(); }
