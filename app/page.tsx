@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type View = "plan" | "children" | "settings" | "objective-form";
+type View = "overview" | "plan" | "children" | "settings" | "objective-form";
 type Status = "Đạt" | "Manh nha" | "Chưa đạt";
 
 type Child = {
@@ -66,9 +66,10 @@ const initialGoals: Goal[] = [
   },
 ];
 
-function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "moon" | "sun"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   const paths: Record<string, React.ReactNode> = {
+    overview: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
     plan: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z" /><path d="M4 5.5v16" /><path d="M8 7h8M8 11h8M8 15h5" /></>,
     children: <><circle cx="9" cy="8" r="3" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0" /><circle cx="17.5" cy="10" r="2.2" /><path d="M15.5 16.8a4.2 4.2 0 0 1 5 3.2" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-2.6V20a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1A1.7 1.7 0 0 0 8 15a1.7 1.7 0 0 0-1.6-1H6v-2.6h.4A1.7 1.7 0 0 0 8 10a1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2H15v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2V14h-.2a1.7 1.7 0 0 0-1.6 1z" /></>,
@@ -83,6 +84,8 @@ function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "t
     save: <><path d="M5 4h12l2 2v14H5z" /><path d="M8 4v5h8V4M8 20v-6h8v6" /></>,
     back: <><path d="M19 12H5M11 6l-6 6 6 6" /></>,
     file: <><path d="M6 3.5h8l4 4V20.5H6z" /><path d="M14 3.5v5h4M9 13h6M9 16h6" /></>,
+    moon: <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2z" />,
+    sun: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" /></>,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -91,15 +94,16 @@ function Logo() {
   return <div className="brand"><div className="brand-mark" aria-hidden="true">{Array.from({ length: 9 }, (_, index) => <i key={index} className={`bubble b${index + 1}`} />)}</div><span>KẾ HOẠCH<br />GIÁO DỤC</span></div>;
 }
 
-const navItems: { label: string; icon: "plan" | "children" | "settings" | "target"; view: View }[] = [
+const navItems: { label: string; icon: "overview" | "plan" | "children" | "settings" | "target"; view: View }[] = [
+  { label: "Tổng quan", icon: "overview", view: "overview" },
   { label: "Kế hoạch giáo dục", icon: "plan", view: "plan" },
   { label: "Thêm mục tiêu", icon: "target", view: "objective-form" },
   { label: "Hồ sơ trẻ", icon: "children", view: "children" },
   { label: "Cài đặt", icon: "settings", view: "settings" },
 ];
 
-function Sidebar({ active, onChange }: { active: View; onChange: (view: View) => void }) {
-  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
+function Sidebar({ active, onChange, darkMode, onToggleTheme }: { active: View; onChange: (view: View) => void; darkMode: boolean; onToggleTheme: () => void }) {
+  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label={darkMode ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}><Icon name={darkMode ? "sun" : "moon"} size={18} /><span>{darkMode ? "Giao diện sáng" : "Giao diện tối"}</span></button><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
 }
 
 function Header({ title, subtitle, actionLabel, actionIcon = "plus", onAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; actionIcon?: "plus" | "file"; onAction?: () => void; onBack?: () => void }) {
@@ -165,25 +169,36 @@ function ObjectiveForm({ childList, onCancel, onSaved }: { childList: Child[]; o
   return <><Header title="Thêm mục tiêu" subtitle="Cài đặt mục tiêu phát triển riêng cho từng trẻ" onBack={onCancel} /><div className="objective-layout"><main><section className="form-card"><div className="form-card-title"><span className="step">01</span><div><h2>Chọn trẻ và lĩnh vực</h2><p>Mỗi mục tiêu chỉ áp dụng cho hồ sơ trẻ được chọn.</p></div></div><div className="form-grid"><SelectField label="Trẻ áp dụng" value={selectedChild?.name ?? ""} onChange={(name) => { const child = childList.find((item) => item.name === name); if (child) setChildId(String(child.id)); }} options={childList.map((child) => child.name)} required /><SelectField label="Lĩnh vực phát triển" value={domain} onChange={setDomain} options={DOMAIN_OPTIONS} required /></div></section><section className="form-card"><div className="form-card-title"><span className="step">02</span><div><h2>Mục tiêu dài hạn</h2><p>Mô tả kết quả mong đợi trong giai đoạn áp dụng.</p></div></div><label className="field"><span>Mục tiêu dài hạn<em>*</em></span><textarea value={longTerm} onChange={(event) => setLongTerm(event.target.value)} placeholder="Ví dụ: Duy trì tương tác với giáo viên 5–10 phút" /></label><div className="form-grid dates"><InputField label="Từ ngày" value={from} onChange={setFrom} /><InputField label="Đến ngày" value={to} onChange={setTo} /></div></section><section className="form-card"><div className="form-card-title"><span className="step">03</span><div><h2>Mục tiêu ngắn hạn</h2><p>Các bước nhỏ giúp trẻ tiến tới mục tiêu dài hạn.</p></div></div><div className="short-goal-editor">{shortGoals.map((goal, index) => <div className="short-goal-edit-row" key={index}><span>{index + 1}</span><input value={goal} onChange={(event) => updateShort(index, event.target.value)} placeholder={`Mục tiêu ngắn hạn ${index + 1}`} /><button type="button" onClick={() => removeShort(index)} aria-label="Xóa mục tiêu"><Icon name="trash" size={17} /></button></div>)}</div><button type="button" className="outline-button" onClick={addShort}><Icon name="plus" size={16} /> Thêm mục tiêu ngắn hạn</button></section><div className="form-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" disabled={!selectedChild || !longTerm.trim() || !shortGoals.some((item) => item.trim())} onClick={() => onSaved({ childId: Number(effectiveChildId), domain, longTerm: longTerm.trim(), shortTerm: shortGoals.map((item) => item.trim()).filter(Boolean), from, to, statuses: ["Manh nha", "Manh nha", "Chưa đạt", "Chưa đạt"] })}><Icon name="save" size={17} /> Lưu mục tiêu</button></div></main><aside className="objective-preview"><div className="preview-heading"><Icon name="target" size={19} /> Xem trước</div><div className="preview-body"><span className="preview-label">{selectedChild?.name || "Chưa chọn trẻ"}</span><span className="domain-pill">{domain}</span><h3>Mục tiêu dài hạn</h3><p>{longTerm || "Chưa nhập mục tiêu"}</p><h3>Mục tiêu ngắn hạn</h3><ol>{shortGoals.filter(Boolean).map((goal, index) => <li key={index}>{goal}</li>)}</ol></div></aside></div></>;
 }
 
-function SettingsView() {
+function OverviewView({ childList, selectedChildId, onSelectChild, goals, onStatusChange, onOpenPlan }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; onStatusChange: (id: number, week: number, status: Status) => void; onOpenPlan: () => void }) {
+  const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
+  if (!child) return <div className="empty-state"><Icon name="overview" size={34} /><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p></div>;
+  const childGoals = goals.filter((goal) => goal.childId === child.id);
+  const achievedCount = childGoals.reduce((total, goal) => total + goal.statuses.filter((status) => status === "Đạt").length, 0);
+  const trackedCount = childGoals.length;
+  return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><div className="overview-grid"><article className="overview-card"><span className="overview-card-label">Hồ sơ trẻ</span><strong>{childList.length}</strong><small>đang được quản lý</small></article><article className="overview-card"><span className="overview-card-label">Mục tiêu đang theo dõi</span><strong>{trackedCount}</strong><small>của {child.name}</small></article><article className="overview-card success"><span className="overview-card-label">Kết quả đạt</span><strong>{achievedCount}</strong><small>trạng thái theo tuần</small></article></div><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Tổng hợp nhanh các mục tiêu của {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" /> Đạt</span><span><i className="yellow-dot" /> Manh nha</span><span><i className="gray-dot" /> Chưa đạt</span></div></div><GoalsTable goals={childGoals} onStatusChange={onStatusChange} /></>;
+}
+
+function SettingsView({ darkMode, onToggleTheme }: { darkMode: boolean; onToggleTheme: () => void }) {
   const [saved, setSaved] = useState(false);
   const [reminder, setReminder] = useState(true);
   const [compact, setCompact] = useState(false);
-  return <><Header title="Cài đặt" subtitle="Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục" /><div className="settings-card"><div className="settings-heading"><div className="settings-icon"><Icon name="settings" size={24} /></div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><div className="setting-row"><span><strong>Nhắc cập nhật mục tiêu</strong><small>Hiển thị nhắc nhở khi đến kỳ đánh giá.</small></span><input aria-label="Nhắc cập nhật mục tiêu" type="checkbox" checked={reminder} onChange={(event) => setReminder(event.target.checked)} /></div><div className="setting-row"><span><strong>Giao diện gọn</strong><small>Thu gọn khoảng cách trong bảng kế hoạch.</small></span><input aria-label="Giao diện gọn" type="checkbox" checked={compact} onChange={(event) => setCompact(event.target.checked)} /></div><div className="settings-save"><button type="button" className="button primary" onClick={() => { setSaved(true); window.setTimeout(() => setSaved(false), 2200); }}><Icon name="save" size={17} /> Lưu cài đặt</button>{saved && <span>Đã lưu thay đổi</span>}</div></div></>;
+  return <><Header title="Cài đặt" subtitle="Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục" /><div className="settings-card"><div className="settings-heading"><div className="settings-icon"><Icon name="settings" size={24} /></div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><div className="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input aria-label="Giao diện tối" type="checkbox" checked={darkMode} onChange={onToggleTheme} /></div><div className="setting-row"><span><strong>Nhắc cập nhật mục tiêu</strong><small>Hiển thị nhắc nhở khi đến kỳ đánh giá.</small></span><input aria-label="Nhắc cập nhật mục tiêu" type="checkbox" checked={reminder} onChange={(event) => setReminder(event.target.checked)} /></div><div className="setting-row"><span><strong>Giao diện gọn</strong><small>Thu gọn khoảng cách trong bảng kế hoạch.</small></span><input aria-label="Giao diện gọn" type="checkbox" checked={compact} onChange={(event) => setCompact(event.target.checked)} /></div><div className="settings-save"><button type="button" className="button primary" onClick={() => { setSaved(true); window.setTimeout(() => setSaved(false), 2200); }}><Icon name="save" size={17} /> Lưu cài đặt</button>{saved && <span>Đã lưu thay đổi</span>}</div></div></>;
 }
 
 export default function Home() {
   const [view, setView] = useState<View>("plan");
+  const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>(initialChildren);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [selectedChildId, setSelectedChildId] = useState(initialChildren[0].id);
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
+  useEffect(() => { document.documentElement.classList.toggle("dark-mode", darkMode); window.localStorage.setItem("giaoan-theme", darkMode ? "dark" : "light"); }, [darkMode]);
   const updateStatus = (id: number, week: number, status: Status) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, statuses: goal.statuses.map((item, index) => index === week ? status : item) } : goal));
   const saveChild = (data: Omit<Child, "id">) => { if (editingChild) setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item)); else setChildren((items) => [...items, { ...data, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setShowChildForm(false); setEditingChild(undefined); };
   const deleteChild = (id: number) => { const child = children.find((item) => item.id === id); if (!child || !window.confirm(`Xóa hồ sơ của ${child.name}?`)) return; setChildren((items) => items.filter((item) => item.id !== id)); setGoals((items) => items.filter((goal) => goal.childId !== id)); if (selectedChildId === id) { const next = children.find((item) => item.id !== id); if (next) setSelectedChildId(next.id); } };
   const saveGoal = (goal: Omit<Goal, "id">) => { setGoals((items) => [...items, { ...goal, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setSelectedChildId(goal.childId); setView("plan"); };
   const navigate = (next: View) => { setView(next); if (next === "objective-form" && !children.length) setShowChildForm(true); };
   const currentView = useMemo(() => view, [view]);
-  return <div className="app-shell"><Sidebar active={currentView} onChange={navigate} /><main className="main-content">{view === "plan" && <PlanView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} onStatusChange={updateStatus} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}</div>;
+  return <div className="app-shell"><Sidebar active={currentView} onChange={navigate} darkMode={darkMode} onToggleTheme={() => setDarkMode((value) => !value)} /><main className="main-content">{view === "overview" && <OverviewView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} onStatusChange={updateStatus} onOpenPlan={() => setView("plan")} />}{view === "plan" && <PlanView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} onStatusChange={updateStatus} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView darkMode={darkMode} onToggleTheme={() => setDarkMode((value) => !value)} />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}</div>;
 }

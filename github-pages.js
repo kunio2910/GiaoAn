@@ -1,5 +1,6 @@
 (function () {
   const storageKey = 'giaoan-child-plans-v2';
+  const themeStorageKey = 'giaoan-theme';
   const weekLabels = ['Tuần 1 - 2', 'Tuần 3 - 4', 'Tuần 5 - 6', 'Tuần 7 - 8'];
   const statuses = ['Đạt', 'Manh nha', 'Chưa đạt'];
   const domains = ['Tương tác xã hội', 'Chú ý chung', 'Giao tiếp', 'Kỹ năng tự phục vụ'];
@@ -14,8 +15,9 @@
       { id: 3, childId: 2, domain: 'Chú ý chung', longTerm: 'Nhìn theo người lớn và đồ vật được chỉ dẫn', shortTerm: ['Nhìn theo khi cô chỉ vào đồ vật gần.', 'Luân phiên nhìn người và đồ vật 2–3 lần.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Chưa đạt', 'Manh nha', 'Đạt', 'Đạt'] }
     ]
   };
-  const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch (_) { return null; } })();
+  const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const state = { children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
+  let darkMode = localStorage.getItem(themeStorageKey) === 'dark';
   const defaultShortGoals = ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút (có đổi trò chơi).'];
   const defaultLongTerm = 'Duy trì tương tác với giáo viên 5–10 phút';
   let draftShortGoals = [...defaultShortGoals];
@@ -24,9 +26,35 @@
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const icon = (name, className = '') => `<svg class="${className}"><use href="#icon-${name}"></use></svg>`;
   const initials = (name) => String(name).split(' ').map((part) => part[0]).slice(-2).join('');
-  const persist = () => localStorage.setItem(storageKey, JSON.stringify({ children: state.children, goals: state.goals }));
+  const persistentData = () => {
+    const data = { ...state };
+    delete data.view;
+    delete data.selectedChildId;
+    return data;
+  };
+  const persist = () => {
+    const data = persistentData();
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    if (window.GiaoAnCloud) {
+      window.GiaoAnCloud.save(data).catch((error) => {
+        console.error('Không thể đồng bộ dữ liệu lên Google Sheet:', error);
+      });
+    }
+  };
   const childById = (id) => state.children.find((child) => child.id === Number(id));
   const selectedChild = () => childById(state.selectedChildId) || state.children[0];
+  function applyTheme() {
+    document.documentElement.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem(themeStorageKey, darkMode ? 'dark' : 'light');
+    const toggle = document.querySelector('.theme-toggle');
+    if (toggle) {
+      toggle.setAttribute('aria-label', darkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối');
+      toggle.innerHTML = `${icon(darkMode ? 'sun' : 'moon')}<span>${darkMode ? 'Giao diện sáng' : 'Giao diện tối'}</span>`;
+    }
+    const settingsToggle = document.querySelector('[data-theme-toggle]');
+    if (settingsToggle) settingsToggle.checked = darkMode;
+  }
+  function setTheme(value) { darkMode = value; applyTheme(); }
 
   function header(title, subtitle, action) {
     return `<header class="topbar"><div class="topbar-title"><div><h1>${title}</h1>${subtitle ? `<p>${subtitle}</p>` : ''}</div></div>${action || ''}</header>`;
@@ -41,6 +69,15 @@
       const goal = select && state.goals.find((item) => item.id === Number(select.dataset.goalId));
       if (goal?.note && !cell.querySelector('.note-content')) cell.insertAdjacentHTML('beforeend', `<span class="note-content" title="${esc(goal.note)}">${esc(goal.note)}</span>`);
     });
+  }
+
+  function renderOverview() {
+    const child = selectedChild();
+    if (!child) { $('#screen-overview').innerHTML = `<div class="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
+    const goals = state.goals.filter((goal) => goal.childId === child.id);
+    const achieved = goals.reduce((total, goal) => total + goal.statuses.filter((status) => status === 'Đạt').length, 0);
+    const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('file')}Xem kế hoạch`, 'view-plan', true)}</div>`;
+    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}<div class="overview-grid"><article class="overview-card"><span class="overview-card-label">Hồ sơ trẻ</span><strong>${state.children.length}</strong><small>đang được quản lý</small></article><article class="overview-card"><span class="overview-card-label">Mục tiêu đang theo dõi</span><strong>${goals.length}</strong><small>của ${esc(child.name)}</small></article><article class="overview-card success"><span class="overview-card-label">Kết quả đạt</span><strong>${achieved}</strong><small>trạng thái theo tuần</small></article></div><div class="overview-toolbar">${selectField('Đang xem tổng quan của', 'overview-child-select', state.children.map((item) => ({ value: item.id, label: item.name })), child.id)}</div><section class="child-summary">${avatar(child)}<div class="summary-name"><strong>${esc(child.name)}</strong><span>${icon('calendar')}Ngày sinh: ${esc(child.birthday)}</span><span>${icon('user')}Tuổi thực: 1 tuổi 11 tháng</span></div><div class="summary-meta"><span>${icon('user')}Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span>${icon('calendar')}Ngày lập kế hoạch: 30/06/2026</span></div><div class="evaluation-summary"><strong>${icon('calendar')}Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section><div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Tổng hợp nhanh các mục tiêu của ${esc(child.name)}.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div><div class="overview-note">Chọn <strong>Kế hoạch giáo dục</strong> để cập nhật trạng thái chi tiết theo từng tuần.</div>`;
   }
 
   function renderPlan() {
@@ -107,7 +144,7 @@
     $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Nhắc cập nhật mục tiêu</strong><small>Hiển thị nhắc nhở khi đến kỳ đánh giá.</small></span><input type="checkbox" checked /></label><label class="setting-row"><span><strong>Giao diện gọn</strong><small>Thu gọn khoảng cách trong bảng kế hoạch.</small></span><input type="checkbox" /></label><div class="settings-save"><button type="button" class="button primary" data-action="save-settings">${icon('save')}Lưu cài đặt</button><span id="settings-saved" hidden>Đã lưu thay đổi</span></div></div>`;
   }
 
-  function navigate(view) { state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'plan') renderPlan(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function navigate(view) { state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan') renderPlan(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function openChildModal(id) { const child = id ? childById(id) : null; $('#child-modal-title').textContent = child ? 'Chỉnh sửa hồ sơ trẻ' : 'Thêm trẻ mới'; $('#child-id').value = child?.id || ''; $('#child-name').value = child?.name || ''; $('#child-birthday').value = child?.birthday || ''; $('#child-gender').value = child?.gender || 'Nữ'; $('#child-note').value = child?.note || ''; $('#child-modal').removeAttribute('hidden'); $('#child-name').focus(); }
   function closeChildModal() { $('#child-modal').setAttribute('hidden', ''); }
   function openNoteModal(id) { const goal = state.goals.find((item) => item.id === Number(id)); if (!goal) return; $('#note-goal-id').value = goal.id; $('#note-text').value = goal.note || ''; $('#note-modal').removeAttribute('hidden'); $('#note-text').focus(); }
@@ -120,6 +157,8 @@
     const action = event.target.closest('[data-action]');
     if (action) {
       if (action.dataset.action === 'open-child') openChildModal();
+      if (action.dataset.action === 'view-plan') navigate('plan');
+      if (action.dataset.action === 'toggle-theme') setTheme(!darkMode);
       if (action.dataset.action === 'close-child') closeChildModal();
       if (action.dataset.action === 'close-note') closeNoteModal();
       if (action.dataset.action === 'objective') { draftShortGoals = [...defaultShortGoals]; draftLongTerm = defaultLongTerm; navigate('objective'); }
@@ -138,6 +177,7 @@
   });
   document.addEventListener('change', (event) => {
     const select = event.target;
+    if (select.id === 'overview-child-select') { state.selectedChildId = Number(select.value); renderOverview(); return; }
     if (select.id === 'plan-child-select') { state.selectedChildId = Number(select.value); renderPlan(); return; }
     if (select.id === 'objective-child') { state.selectedChildId = Number(select.value); updateObjectivePreview(); }
     if (select.id === 'objective-domain') { updateObjectivePreview(); return; }
@@ -163,6 +203,24 @@
     if (event.target.id === 'child-form') { event.preventDefault(); const id = Number($('#child-id').value); const data = { name: $('#child-name').value.trim(), birthday: $('#child-birthday').value.trim(), gender: $('#child-gender').value, note: $('#child-note').value.trim() }; if (id) state.children = state.children.map((child) => child.id === id ? { ...data, id } : child); else { const newId = Math.max(0, ...state.children.map((child) => child.id)) + 1; state.children.push({ ...data, id: newId }); state.selectedChildId = newId; } persist(); closeChildModal(); render(); return; }
     if (event.target.id === 'objective-form') { event.preventDefault(); const shortTerm = draftShortGoals.map((item) => item.trim()).filter(Boolean); if (!shortTerm.length || !$('#objective-long').value.trim()) return; const goal = { id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: Number($('#objective-child').value), domain: $('#objective-domain').value, longTerm: $('#objective-long').value.trim(), shortTerm, from: $('#objective-from').value, to: $('#objective-to').value, statuses: ['Manh nha', 'Manh nha', 'Chưa đạt', 'Chưa đạt'] }; state.goals.push(goal); state.selectedChildId = goal.childId; persist(); navigate('plan'); }
   });
-  function render() { renderPlan(); renderChildren(); renderObjective(); renderSettings(); navigate(state.view); }
+  function render() { renderOverview(); renderPlan(); renderChildren(); renderObjective(); renderSettings(); navigate(state.view); }
+  applyTheme();
   render();
+  if (window.GiaoAnCloud) {
+    window.GiaoAnCloud.load().then((data) => {
+      if (!data || typeof data !== 'object' || !Object.keys(data).length) {
+        // Lần đầu kết nối: giữ dữ liệu hiện có rồi tạo bản JSON trên Sheet.
+        persist();
+        return;
+      }
+
+      if (Array.isArray(data.children)) state.children = data.children;
+      if (Array.isArray(data.goals)) state.goals = data.goals;
+      state.selectedChildId = state.children[0]?.id || 0;
+      localStorage.setItem(storageKey, JSON.stringify(persistentData()));
+      render();
+    }).catch((error) => {
+      console.error('Không thể tải dữ liệu từ Google Sheet:', error);
+    });
+  }
 })();
