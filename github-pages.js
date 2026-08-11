@@ -16,7 +16,7 @@
     ]
   };
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
-  const state = { children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
+  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
   let darkMode = localStorage.getItem(themeStorageKey) === 'dark';
   const defaultShortGoals = ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút (có đổi trò chơi).'];
   const defaultLongTerm = 'Duy trì tương tác với giáo viên 5–10 phút';
@@ -214,6 +214,9 @@
         return;
       }
 
+      Object.keys(data).forEach((key) => {
+        if (key !== 'children' && key !== 'goals') state[key] = data[key];
+      });
       if (Array.isArray(data.children)) state.children = data.children;
       if (Array.isArray(data.goals)) state.goals = data.goals;
       state.selectedChildId = state.children[0]?.id || 0;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { loadCloudData, saveCloudData, type CloudData } from "./google-sheet-connection";
 
 type View = "overview" | "plan" | "children" | "settings" | "objective-form";
 type Status = "Đạt" | "Manh nha" | "Chưa đạt";
@@ -22,6 +23,11 @@ type Goal = {
   from: string;
   to: string;
   statuses: Status[];
+};
+
+type AppCloudData = CloudData & {
+  children?: Child[];
+  goals?: Goal[];
 };
 
 const WEEK_LABELS = ["Tuần 1 - 2", "Tuần 3 - 4", "Tuần 5 - 6", "Tuần 7 - 8"];
@@ -193,7 +199,52 @@ export default function Home() {
   const [selectedChildId, setSelectedChildId] = useState(initialChildren[0].id);
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
+  const [cloudExtras, setCloudExtras] = useState<Record<string, unknown>>({});
+  const cloudSaveTimer = useRef<number | null>(null);
   useEffect(() => { document.documentElement.classList.toggle("dark-mode", darkMode); window.localStorage.setItem("giaoan-theme", darkMode ? "dark" : "light"); }, [darkMode]);
+  useEffect(() => {
+    let active = true;
+
+    loadCloudData<AppCloudData>()
+      .then((data) => {
+        if (!active) return;
+
+        if (data) {
+          const { children: cloudChildren, goals: cloudGoals, ...extras } = data;
+          setCloudExtras(extras);
+          if (Array.isArray(cloudChildren)) setChildren(cloudChildren);
+          if (Array.isArray(cloudGoals)) setGoals(cloudGoals);
+        }
+
+        setCloudReady(true);
+      })
+      .catch((error) => {
+        console.error("Không thể tải dữ liệu từ Google Sheet:", error);
+        if (active) setCloudReady(true);
+      });
+
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!cloudReady) return;
+
+    if (cloudSaveTimer.current !== null) {
+      window.clearTimeout(cloudSaveTimer.current);
+    }
+
+    cloudSaveTimer.current = window.setTimeout(() => {
+      saveCloudData({ ...cloudExtras, children, goals }).catch((error) => {
+        console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error);
+      });
+    }, 250);
+
+    return () => {
+      if (cloudSaveTimer.current !== null) {
+        window.clearTimeout(cloudSaveTimer.current);
+      }
+    };
+  }, [children, goals, cloudExtras, cloudReady]);
   const updateStatus = (id: number, week: number, status: Status) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, statuses: goal.statuses.map((item, index) => index === week ? status : item) } : goal));
   const saveChild = (data: Omit<Child, "id">) => { if (editingChild) setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item)); else setChildren((items) => [...items, { ...data, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setShowChildForm(false); setEditingChild(undefined); };
   const deleteChild = (id: number) => { const child = children.find((item) => item.id === id); if (!child || !window.confirm(`Xóa hồ sơ của ${child.name}?`)) return; setChildren((items) => items.filter((item) => item.id !== id)); setGoals((items) => items.filter((goal) => goal.childId !== id)); if (selectedChildId === id) { const next = children.find((item) => item.id !== id); if (next) setSelectedChildId(next.id); } };
