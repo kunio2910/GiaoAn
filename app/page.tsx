@@ -23,16 +23,20 @@ type Goal = {
   from: string;
   to: string;
   statuses: Status[];
+  note?: string;
 };
 
 type AppCloudData = CloudData & {
   children?: Child[];
   goals?: Goal[];
+  evaluationPeriods?: string[];
 };
 
 const WEEK_LABELS = ["Tuần 1 - 2", "Tuần 3 - 4", "Tuần 5 - 6", "Tuần 7 - 8"];
 const STATUS_OPTIONS: Status[] = ["Đạt", "Manh nha", "Chưa đạt"];
 const DOMAIN_OPTIONS = ["Tương tác xã hội", "Chú ý chung", "Giao tiếp", "Kỹ năng tự phục vụ"];
+
+const DEFAULT_EVALUATION_PERIODS = ["Tuần 1 - 2", "Tuần 3 - 4", "Tuần 5 - 6", "Tuần 7 - 8"];
 
 const initialChildren: Child[] = [
   { id: 1, name: "Nguyễn Khánh Linh", birthday: "07/07/2021", gender: "Nữ", note: "Thích hoạt động có âm nhạc." },
@@ -184,12 +188,193 @@ function OverviewView({ childList, selectedChildId, onSelectChild, goals, onStat
   return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><div className="overview-grid"><article className="overview-card"><span className="overview-card-label">Hồ sơ trẻ</span><strong>{childList.length}</strong><small>đang được quản lý</small></article><article className="overview-card"><span className="overview-card-label">Mục tiêu đang theo dõi</span><strong>{trackedCount}</strong><small>của {child.name}</small></article><article className="overview-card success"><span className="overview-card-label">Kết quả đạt</span><strong>{achievedCount}</strong><small>trạng thái theo tuần</small></article></div><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Tổng hợp nhanh các mục tiêu của {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" /> Đạt</span><span><i className="yellow-dot" /> Manh nha</span><span><i className="gray-dot" /> Chưa đạt</span></div></div><GoalsTable goals={childGoals} onStatusChange={onStatusChange} /></>;
 }
 
+function SidebarV2({ active, onChange }: { active: View; onChange: (view: View) => void }) {
+  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
+}
+
+/* eslint-disable jsx-a11y/no-autofocus */
+type GoalDialogMode = "domain" | "long" | "short" | "edit-long" | "period" | "edit-short";
+
+type GoalDialogState = {
+  mode: GoalDialogMode;
+  goalId?: number;
+  shortIndex?: number;
+  initialValue?: string;
+  initialDomain?: string;
+  initialGoalId?: number;
+};
+
+type GoalDialogSave = {
+  mode: GoalDialogMode;
+  text: string;
+  domain: string;
+  goalId?: number;
+};
+
+function AddTableButton({ onClick, label = "Thêm" }: { onClick?: () => void; label?: string }) {
+  if (!onClick) return null;
+  return <button type="button" className="table-add-button" onClick={onClick}><Icon name="plus" size={17} />{label}</button>;
+}
+
+function ReadOnlyStatus({ value }: { value: Status }) {
+  return <div className={`status-select read-only ${value === "Đạt" ? "achieved" : value === "Manh nha" ? "emerging" : "not-achieved"}`}><span className="status-dot" /><span>{value}</span></div>;
+}
+
+function EditableStatus({ value, onChange }: { value: Status; onChange: (value: Status) => void }) {
+  return <StatusSelect value={value} onChange={onChange} />;
+}
+
+function GoalsTableV2({
+  goals,
+  evaluationPeriods,
+  readOnly = false,
+  onStatusChange,
+  onNoteClick,
+  onAddDomain,
+  onAddLong,
+  onAddShort,
+  onAddPeriod,
+  onEditLong,
+  onDeleteGoal,
+  onEditShort,
+  onDeleteShort,
+}: {
+  goals: Goal[];
+  evaluationPeriods: string[];
+  readOnly?: boolean;
+  onStatusChange?: (id: number, week: number, status: Status) => void;
+  onNoteClick?: (id: number) => void;
+  onAddDomain?: () => void;
+  onAddLong?: () => void;
+  onAddShort?: () => void;
+  onAddPeriod?: () => void;
+  onEditLong?: (goal: Goal) => void;
+  onDeleteGoal?: (goal: Goal) => void;
+  onEditShort?: (goal: Goal, index: number) => void;
+  onDeleteShort?: (goal: Goal, index: number) => void;
+}) {
+  const domainCounts = goals.reduce<Record<string, number>>((counts, goal) => ({ ...counts, [goal.domain]: (counts[goal.domain] ?? 0) + 1 }), {});
+  const periodLabels = evaluationPeriods.length ? evaluationPeriods : ["Chưa có thời gian"];
+  return <div className="table-scroll"><table className="goals-table"><thead><tr><th><div className="table-head-title">LĨNH VỰC<AddTableButton onClick={readOnly ? undefined : onAddDomain} /></div></th><th><div className="table-head-title">MỤC TIÊU DÀI HẠN<AddTableButton onClick={readOnly ? undefined : onAddLong} /></div></th><th><div className="table-head-title">MỤC TIÊU NGẮN HẠN<AddTableButton onClick={readOnly ? undefined : onAddShort} /></div></th><th colSpan={periodLabels.length}><div className="table-head-title">KẾT QUẢ<AddTableButton onClick={readOnly ? undefined : onAddPeriod} /></div></th><th>GHI CHÚ</th></tr><tr className="period-header"><th /><th /><th />{periodLabels.map((label) => <th key={label}>{label}</th>)}<th /></tr></thead><tbody>{goals.map((goal, index) => { const isFirstDomainRow = index === 0 || goals[index - 1].domain !== goal.domain; const statuses = periodLabels.map((_, periodIndex) => goal.statuses[periodIndex] ?? "Chưa đạt"); return <tr key={goal.id}>{isFirstDomainRow && <td className="domain-cell" rowSpan={domainCounts[goal.domain]}><span className="domain-icon"><Icon name="target" size={21} /></span><strong>{goal.domain || "Chưa phân loại"}</strong></td>}<td className="long-term-cell"><div>{goal.longTerm || <span className="cell-placeholder">Chưa nhập mục tiêu</span>}</div>{!readOnly && <div className="goal-inline-actions"><button type="button" className="goal-edit-button" onClick={() => onEditLong?.(goal)}><Icon name="edit" size={16} />Sửa</button><button type="button" className="goal-delete-button" onClick={() => onDeleteGoal?.(goal)}><Icon name="trash" size={16} />Xóa</button></div>}</td><td className="short-term-cell">{goal.shortTerm.length ? <ul>{goal.shortTerm.map((item, shortIndex) => <li key={`${goal.id}-${shortIndex}`}><span>{item || <span className="cell-placeholder">Chưa nhập mục tiêu</span>}</span>{!readOnly && <span className="goal-inline-actions"><button type="button" className="goal-edit-button" onClick={() => onEditShort?.(goal, shortIndex)}><Icon name="edit" size={15} />Sửa</button><button type="button" className="goal-delete-button" onClick={() => onDeleteShort?.(goal, shortIndex)}><Icon name="trash" size={15} />Xóa</button></span>}</li>)}</ul> : <span className="cell-placeholder">Chưa có mục tiêu ngắn hạn</span>}</td>{statuses.map((status, periodIndex) => <td className="result-cell" key={`${goal.id}-${periodIndex}`}>{readOnly ? <ReadOnlyStatus value={status} /> : <EditableStatus value={status} onChange={(next) => onStatusChange?.(goal.id, periodIndex, next)} />}</td>)}<td className="row-note">{readOnly ? <><span className="note-icon-display"><Icon name="note" size={20} /></span>{goal.note ? <span className="note-content" title={goal.note}>{goal.note}</span> : <span className="cell-placeholder">Chưa có ghi chú</span>}</> : <button type="button" aria-label={`Ghi chú mục tiêu ${goal.longTerm || goal.domain}`} onClick={() => onNoteClick?.(goal.id)}><Icon name="note" size={21} /></button>}</td></tr>; })}</tbody></table>{!goals.length && <div className="table-empty-state"><Icon name="target" size={30} /><strong>Chưa có mục tiêu phát triển</strong><span>Nhấn “Thêm” để bắt đầu tạo mục tiêu cho trẻ.</span></div>}<div className="table-footer"><span>Hiển thị {goals.length} mục tiêu</span><div className="pagination" aria-label="Phân trang"><button type="button" disabled aria-label="Trang đầu">|‹</button><button type="button" disabled aria-label="Trang trước">‹</button><button type="button" className="active" aria-current="page">1</button><button type="button" disabled aria-label="Trang sau">›</button><button type="button" disabled aria-label="Trang cuối">›|</button></div></div></div>;
+}
+
+function GoalDialog({ mode, goals, initialValue = "", initialGoalId, initialDomain, onCancel, onSave }: { mode: GoalDialogMode; goals: Goal[]; initialValue?: string; initialGoalId?: number; initialDomain?: string; onCancel: () => void; onSave: (data: GoalDialogSave) => void }) {
+  const [text, setText] = useState(initialValue);
+  const [domain, setDomain] = useState(initialDomain ?? goals[0]?.domain ?? DOMAIN_OPTIONS[0]);
+  const [goalId, setGoalId] = useState(String(initialGoalId ?? goals[0]?.id ?? ""));
+  const isEdit = mode === "edit-long" || mode === "edit-short";
+  const isShort = mode === "short" || mode === "edit-short";
+  const title = mode === "domain" ? "Thêm lĩnh vực" : mode === "period" ? "Thêm thời gian kết quả" : mode === "long" ? "Thêm mục tiêu dài hạn" : mode === "short" ? "Thêm mục tiêu ngắn hạn" : mode === "edit-long" ? "Chỉnh sửa mục tiêu dài hạn" : "Chỉnh sửa mục tiêu ngắn hạn";
+  const description = mode === "period" ? "Thêm một mốc thời gian để theo dõi kết quả." : "Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.";
+  const label = mode === "domain" ? "Tên lĩnh vực" : mode === "period" ? "Tên thời gian đánh giá" : isShort ? "Mục tiêu ngắn hạn" : "Mục tiêu dài hạn";
+  const placeholder = mode === "period" ? "Ví dụ: Tuần 9 - 10" : mode === "domain" ? "Ví dụ: Kỹ năng tự phục vụ" : "Nhập nội dung mục tiêu...";
+  return <div className="modal-backdrop" role="presentation"><div className="modal-card goal-dialog" role="dialog" aria-modal="true" aria-labelledby="goal-dialog-title"><div className="modal-head"><div><h2 id="goal-dialog-title">{title}</h2><p>{description}</p></div><button type="button" className="close-button" onClick={onCancel} aria-label="Đóng">×</button></div><div className="form-grid">{mode === "long" && <SelectField label="Lĩnh vực áp dụng" value={domain} onChange={setDomain} options={[...new Set([...DOMAIN_OPTIONS, ...goals.map((goal) => goal.domain).filter(Boolean)])]} required />}{mode === "short" && <label className="field"><span>Mục tiêu dài hạn<em>*</em></span><div className="select-wrap"><select value={goalId} onChange={(event) => setGoalId(event.target.value)}>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.longTerm || "Chưa nhập mục tiêu"}</option>)}</select><Icon name="chevron" size={18} /></div></label>}{mode !== "short" && <label className="field full"><span>{label}<em>*</em></span>{mode === "period" || mode === "domain" ? <input value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus /> : <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus />}</label>}{mode === "short" && <label className="field full"><span>{label}<em>*</em></span><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus /></label>}{isEdit && <div className="field full"><small className="field-hint">Bạn đang cập nhật trực tiếp thông tin trong bảng mục tiêu.</small></div>}</div><div className="modal-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" disabled={!text.trim()} onClick={() => onSave({ mode, text: text.trim(), domain, goalId: mode === "short" ? Number(goalId) : undefined })}><Icon name="save" size={17} />Lưu</button></div></div></div>;
+}
+
+function NoteDialog({ goal, onCancel, onSave }: { goal?: Goal; onCancel: () => void; onSave: (note: string) => void }) {
+  const [note, setNote] = useState(goal?.note ?? "");
+  return <div className="modal-backdrop" role="presentation"><div className="modal-card note-dialog" role="dialog" aria-modal="true" aria-labelledby="note-dialog-title"><div className="modal-head"><div><h2 id="note-dialog-title">Ghi chú mục tiêu</h2><p>{goal?.longTerm || "Nhập ghi chú cho mục tiêu đang theo dõi."}</p></div><button type="button" className="close-button" onClick={onCancel} aria-label="Đóng">×</button></div><label className="field"><span>Ghi chú</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nhập ghi chú..." autoFocus /></label><div className="modal-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" onClick={() => onSave(note.trim())}><Icon name="save" size={17} />Lưu ghi chú</button></div></div></div>;
+}
+
+function PlanViewV2({ childList, selectedChildId, onSelectChild, goals, evaluationPeriods, onStatusChange, onNoteClick, onAddDomain, onAddLong, onAddShort, onAddPeriod, onEditLong, onDeleteGoal, onEditShort, onDeleteShort }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; evaluationPeriods: string[]; onStatusChange: (id: number, week: number, status: Status) => void; onNoteClick: (id: number) => void; onAddDomain: () => void; onAddLong: () => void; onAddShort: () => void; onAddPeriod: () => void; onEditLong: (goal: Goal) => void; onDeleteGoal: (goal: Goal) => void; onEditShort: (goal: Goal, index: number) => void; onDeleteShort: (goal: Goal, index: number) => void }) {
+  const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
+  const childGoals = child ? [...new Set(goals.filter((goal) => goal.childId === child.id).map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.childId === child.id && goal.domain === domain)) : [];
+  if (!child) return <div className="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p></div>;
+  return <><Header title="Kế hoạch giáo dục" actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} /><div className="plan-toolbar"><SelectField label="Đang xem hồ sơ của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /><div className="plan-count"><span className="count-number">{childGoals.length}</span><span>mục tiêu đang theo dõi</span></div></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="calendar" size={21} /> MỤC TIÊU PHÁT TRIỂN</h2><p>Các mục tiêu được cài đặt riêng cho {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt (Đ)</span><span><i className="yellow-dot" />Manh nha (MN)</span><span><i className="gray-dot" />Chưa đạt (CĐ)</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} onStatusChange={onStatusChange} onNoteClick={onNoteClick} onAddDomain={onAddDomain} onAddLong={onAddLong} onAddShort={onAddShort} onAddPeriod={onAddPeriod} onEditLong={onEditLong} onDeleteGoal={onDeleteGoal} onEditShort={onEditShort} onDeleteShort={onDeleteShort} /></>;
+}
+
+function OverviewViewV2({ childList, selectedChildId, onSelectChild, goals, evaluationPeriods, onOpenPlan }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; evaluationPeriods: string[]; onOpenPlan: () => void }) {
+  const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
+  if (!child) return <div className="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p></div>;
+  const childGoals = [...new Set(goals.filter((goal) => goal.childId === child.id).map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.childId === child.id && goal.domain === domain));
+  const achievedCount = childGoals.reduce((total, goal) => total + goal.statuses.filter((status) => status === "Đạt").length, 0);
+  return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><div className="overview-grid"><article className="overview-card"><span className="overview-card-label">Hồ sơ trẻ</span><strong>{childList.length}</strong><small>đang được quản lý</small></article><article className="overview-card"><span className="overview-card-label">Mục tiêu đang theo dõi</span><strong>{childGoals.length}</strong><small>của {child.name}</small></article><article className="overview-card success"><span className="overview-card-label">Kết quả đạt</span><strong>{achievedCount}</strong><small>trạng thái theo tuần</small></article></div><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt</span><span><i className="yellow-dot" />Manh nha</span><span><i className="gray-dot" />Chưa đạt</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} readOnly /></>;
+}
+
+/* eslint-enable jsx-a11y/no-autofocus */
+
 function SettingsView({ darkMode, onToggleTheme }: { darkMode: boolean; onToggleTheme: () => void }) {
   const [saved, setSaved] = useState(false);
   return <><Header title="Cài đặt" subtitle="Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục" /><div className="settings-card"><div className="settings-heading"><div className="settings-icon"><Icon name="settings" size={24} /></div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><div className="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input aria-label="Giao diện tối" type="checkbox" checked={darkMode} onChange={onToggleTheme} /></div><div className="settings-save"><button type="button" className="button primary" onClick={() => { setSaved(true); window.setTimeout(() => setSaved(false), 2200); }}><Icon name="save" size={17} /> Lưu cài đặt</button>{saved && <span>Đã lưu thay đổi</span>}</div></div></>;
 }
 
 export default function Home() {
+  const [view, setView] = useState<View>("plan");
+  const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
+  const [children, setChildren] = useState<Child[]>(initialChildren);
+  const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [evaluationPeriods, setEvaluationPeriods] = useState<string[]>(DEFAULT_EVALUATION_PERIODS);
+  const [selectedChildId, setSelectedChildId] = useState(initialChildren[0].id);
+  const [editingChild, setEditingChild] = useState<Child | undefined>();
+  const [showChildForm, setShowChildForm] = useState(false);
+  const [goalDialog, setGoalDialog] = useState<GoalDialogState | null>(null);
+  const [noteGoalId, setNoteGoalId] = useState<number | null>(null);
+  const [cloudReady, setCloudReady] = useState(false);
+  const [cloudExtras, setCloudExtras] = useState<Record<string, unknown>>({});
+  const cloudSaveTimer = useRef<number | null>(null);
+
+  useEffect(() => { document.documentElement.classList.toggle("dark-mode", darkMode); window.localStorage.setItem("giaoan-theme", darkMode ? "dark" : "light"); }, [darkMode]);
+  useEffect(() => {
+    let active = true;
+    loadCloudData<AppCloudData>().then((data) => {
+      if (!active) return;
+      if (data) {
+        const { children: cloudChildren, goals: cloudGoals, evaluationPeriods: cloudPeriods, ...extras } = data;
+        setCloudExtras(extras);
+        if (Array.isArray(cloudChildren)) setChildren(cloudChildren);
+        if (Array.isArray(cloudGoals)) setGoals(cloudGoals);
+        if (Array.isArray(cloudPeriods) && cloudPeriods.length) setEvaluationPeriods(cloudPeriods);
+      }
+      setCloudReady(true);
+    }).catch((error) => {
+      console.error("Không thể tải dữ liệu từ Google Sheet:", error);
+      if (active) setCloudReady(true);
+    });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!cloudReady) return;
+    if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current);
+    cloudSaveTimer.current = window.setTimeout(() => {
+      saveCloudData({ ...cloudExtras, children, goals, evaluationPeriods }).catch((error) => console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error));
+    }, 250);
+    return () => { if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current); };
+  }, [children, goals, evaluationPeriods, cloudExtras, cloudReady]);
+
+  const updateStatus = (id: number, periodIndex: number, status: Status) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, statuses: evaluationPeriods.map((_, index) => index === periodIndex ? status : goal.statuses[index] ?? "Chưa đạt") } : goal));
+  const saveChild = (data: Omit<Child, "id">) => { if (editingChild) setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item)); else setChildren((items) => [...items, { ...data, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setShowChildForm(false); setEditingChild(undefined); };
+  const deleteChild = (id: number) => { const child = children.find((item) => item.id === id); if (!child || !window.confirm(`Xóa hồ sơ của ${child.name}?`)) return; setChildren((items) => items.filter((item) => item.id !== id)); setGoals((items) => items.filter((goal) => goal.childId !== id)); if (selectedChildId === id) { const next = children.find((item) => item.id !== id); if (next) setSelectedChildId(next.id); } };
+  const saveGoal = (goal: Omit<Goal, "id">) => { setGoals((items) => [...items, { ...goal, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setSelectedChildId(goal.childId); setView("plan"); };
+  const openGoalDialog = (state: GoalDialogState) => setGoalDialog(state);
+  const saveGoalDialog = ({ mode, text, domain, goalId }: GoalDialogSave) => {
+    if (mode === "domain") {
+      setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain: text, longTerm: "", shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: evaluationPeriods.map(() => "Chưa đạt") }]);
+    } else if (mode === "long") {
+      setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain: domain || DOMAIN_OPTIONS[0], longTerm: text, shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: evaluationPeriods.map(() => "Chưa đạt") }]);
+    } else if (mode === "edit-long" && goalDialog?.goalId) {
+      setGoals((items) => items.map((goal) => goal.id === goalDialog.goalId ? { ...goal, longTerm: text } : goal));
+    } else if (mode === "short" && goalId) {
+      setGoals((items) => items.map((goal) => goal.id === goalId ? { ...goal, shortTerm: [...goal.shortTerm, text] } : goal));
+    } else if (mode === "edit-short" && goalDialog?.goalId && goalDialog.shortIndex !== undefined) {
+      setGoals((items) => items.map((goal) => goal.id === goalDialog.goalId ? { ...goal, shortTerm: goal.shortTerm.map((item, index) => index === goalDialog.shortIndex ? text : item) } : goal));
+    } else if (mode === "period" && !evaluationPeriods.includes(text)) {
+      setEvaluationPeriods((items) => [...items, text]);
+      setGoals((items) => items.map((goal) => ({ ...goal, statuses: [...goal.statuses, "Chưa đạt"] })));
+    }
+    setGoalDialog(null);
+  };
+  const deleteGoal = (goal: Goal) => { if (!window.confirm(`Xóa mục tiêu “${goal.longTerm || goal.domain}”?`)) return; setGoals((items) => items.filter((item) => item.id !== goal.id)); };
+  const deleteShort = (goal: Goal, index: number) => { if (!window.confirm("Xóa mục tiêu ngắn hạn này?")) return; setGoals((items) => items.map((item) => item.id === goal.id ? { ...item, shortTerm: item.shortTerm.filter((_, itemIndex) => itemIndex !== index) } : item)); };
+  const saveNote = (note: string) => { if (noteGoalId === null) return; setGoals((items) => items.map((goal) => goal.id === noteGoalId ? { ...goal, note } : goal)); setNoteGoalId(null); };
+  const navigate = (next: View) => { setView(next); if (next === "objective-form" && !children.length) setShowChildForm(true); };
+  const currentChildGoals = goals.filter((goal) => goal.childId === selectedChildId);
+  const currentView = useMemo(() => view, [view]);
+  const noteGoal = goals.find((goal) => goal.id === noteGoalId);
+  return <div className="app-shell"><SidebarV2 active={currentView} onChange={navigate} /><main className="main-content">{view === "overview" && <OverviewViewV2 childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} evaluationPeriods={evaluationPeriods} onOpenPlan={() => setView("plan")} />}{view === "plan" && <PlanViewV2 childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} evaluationPeriods={evaluationPeriods} onStatusChange={updateStatus} onNoteClick={setNoteGoalId} onAddDomain={() => openGoalDialog({ mode: "domain" })} onAddLong={() => openGoalDialog({ mode: "long", initialDomain: currentChildGoals[0]?.domain })} onAddShort={() => { if (!currentChildGoals.length) { window.alert("Hãy thêm mục tiêu dài hạn trước."); return; } openGoalDialog({ mode: "short", initialGoalId: currentChildGoals[0].id }); }} onAddPeriod={() => openGoalDialog({ mode: "period" })} onEditLong={(goal) => openGoalDialog({ mode: "edit-long", goalId: goal.id, initialValue: goal.longTerm })} onDeleteGoal={deleteGoal} onEditShort={(goal, index) => openGoalDialog({ mode: "edit-short", goalId: goal.id, shortIndex: index, initialValue: goal.shortTerm[index] })} onDeleteShort={deleteShort} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView darkMode={darkMode} onToggleTheme={() => setDarkMode((value) => !value)} />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}{goalDialog && <GoalDialog mode={goalDialog.mode} goals={currentChildGoals} initialValue={goalDialog.initialValue} initialGoalId={goalDialog.goalId} initialDomain={goalDialog.initialValue} onCancel={() => setGoalDialog(null)} onSave={saveGoalDialog} />}{noteGoalId !== null && <NoteDialog goal={noteGoal} onCancel={() => setNoteGoalId(null)} onSave={saveNote} />}</div>;
+}
+
+void HomeLegacy;
+function HomeLegacy() {
   const [view, setView] = useState<View>("plan");
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>(initialChildren);
