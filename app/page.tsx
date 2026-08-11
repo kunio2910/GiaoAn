@@ -6,12 +6,25 @@ import { loadCloudData, saveCloudData, type CloudData } from "./google-sheet-con
 type View = "overview" | "plan" | "children" | "settings" | "objective-form";
 type Status = "Đạt" | "Manh nha" | "Chưa đạt";
 
+const TEACHING_DAYS = [
+  { value: 1, label: "Thứ 2" },
+  { value: 2, label: "Thứ 3" },
+  { value: 3, label: "Thứ 4" },
+  { value: 4, label: "Thứ 5" },
+  { value: 5, label: "Thứ 6" },
+  { value: 6, label: "Thứ 7" },
+  { value: 7, label: "Chủ nhật" },
+] as const;
+
 type Child = {
   id: number;
   name: string;
   birthday: string;
   gender: string;
   note: string;
+  teachingDays?: number[];
+  teachingStartTime?: string;
+  teachingEndTime?: string;
 };
 
 type Goal = {
@@ -193,7 +206,12 @@ function ChildForm({ child, onCancel, onSave }: { child?: Child; onCancel: () =>
   const [birthday, setBirthday] = useState(child?.birthday ?? "");
   const [gender, setGender] = useState(child?.gender ?? "Nữ");
   const [note, setNote] = useState(child?.note ?? "");
-  return <div className="modal-backdrop" role="presentation"><div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="child-form-title"><div className="modal-head"><div><h2 id="child-form-title">{child ? "Chỉnh sửa hồ sơ trẻ" : "Thêm trẻ mới"}</h2><p>Nhập thông tin để quản lý mục tiêu riêng cho trẻ.</p></div><button type="button" className="close-button" onClick={onCancel} aria-label="Đóng">×</button></div><div className="form-grid"><InputField label="Họ và tên trẻ" value={name} onChange={setName} placeholder="Ví dụ: Nguyễn Minh Anh" required /><InputField label="Ngày sinh" value={birthday} onChange={setBirthday} placeholder="dd/mm/yyyy" required /><SelectField label="Giới tính" value={gender} onChange={setGender} options={["Nữ", "Nam", "Khác"]} /><label className="field full"><span>Ghi chú</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Thông tin cần lưu ý về trẻ..." /></label></div><div className="modal-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" disabled={!name.trim() || !birthday.trim()} onClick={() => onSave({ name: name.trim(), birthday: birthday.trim(), gender, note: note.trim() })}><Icon name="save" size={17} /> Lưu hồ sơ</button></div></div></div>;
+  const [teachingDays, setTeachingDays] = useState<number[]>(child?.teachingDays ?? []);
+  const [teachingStartTime, setTeachingStartTime] = useState(child?.teachingStartTime ?? "");
+  const [teachingEndTime, setTeachingEndTime] = useState(child?.teachingEndTime ?? "");
+  const toggleTeachingDay = (day: number) => setTeachingDays((days) => days.includes(day) ? days.filter((item) => item !== day) : [...days, day].sort((a, b) => a - b));
+  const hasInvalidSchedule = teachingDays.length > 0 && (!teachingStartTime || !teachingEndTime);
+  return <div className="modal-backdrop" role="presentation"><div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="child-form-title"><div className="modal-head"><div><h2 id="child-form-title">{child ? "Chỉnh sửa hồ sơ trẻ" : "Thêm trẻ mới"}</h2><p>Nhập thông tin để quản lý mục tiêu riêng cho trẻ.</p></div><button type="button" className="close-button" onClick={onCancel} aria-label="Đóng">×</button></div><div className="form-grid"><InputField label="Họ và tên trẻ" value={name} onChange={setName} placeholder="Ví dụ: Nguyễn Minh Anh" required /><InputField label="Ngày sinh" value={birthday} onChange={setBirthday} placeholder="dd/mm/yyyy" required /><SelectField label="Giới tính" value={gender} onChange={setGender} options={["Nữ", "Nam", "Khác"]} /><fieldset className="schedule-fieldset field full"><legend>Ngày giờ dạy</legend><p>Chọn các ngày trẻ học để hiển thị trên lịch tổng quan.</p><div className="teaching-day-list">{TEACHING_DAYS.map((day) => <label className={`teaching-day-option ${teachingDays.includes(day.value) ? "selected" : ""}`} key={day.value}><input type="checkbox" checked={teachingDays.includes(day.value)} onChange={() => toggleTeachingDay(day.value)} /><span>{day.label}</span></label>)}</div><div className="teaching-time-grid"><InputField label="Giờ bắt đầu" value={teachingStartTime} onChange={setTeachingStartTime} type="time" /><InputField label="Giờ kết thúc" value={teachingEndTime} onChange={setTeachingEndTime} type="time" /></div>{hasInvalidSchedule && <small className="schedule-error">Vui lòng chọn đủ giờ bắt đầu và giờ kết thúc.</small>}</fieldset><label className="field full"><span>Ghi chú</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Thông tin cần lưu ý về trẻ..." /></label></div><div className="modal-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" disabled={!name.trim() || !birthday.trim() || hasInvalidSchedule} onClick={() => onSave({ name: name.trim(), birthday: birthday.trim(), gender, note: note.trim(), teachingDays, teachingStartTime, teachingEndTime })}><Icon name="save" size={17} /> Lưu hồ sơ</button></div></div></div>;
 }
 
 function ChildrenView({ childList, onAdd, onEdit, onDelete, onSelectPlan }: { childList: Child[]; onAdd: () => void; onEdit: (child: Child) => void; onDelete: (id: number) => void; onSelectPlan: (id: number) => void }) {
@@ -398,21 +416,23 @@ function getOverviewCalendarCells(cursor: Date): OverviewCalendarCell[] {
   return cells;
 }
 
-function OverviewCalendar() {
+function OverviewCalendar({ child }: { child: Child }) {
   const today = new Date();
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const cells = useMemo(() => getOverviewCalendarCells(cursor), [cursor]);
   const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
   const monthTitle = new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(cursor);
+  const teachingDays = child.teachingDays ?? [];
+  const teachingTime = child.teachingStartTime && child.teachingEndTime ? `${child.teachingStartTime} - ${child.teachingEndTime}` : "";
 
-  return <section className="overview-calendar" aria-label="Lịch kế hoạch"><div className="overview-calendar-head"><div><span className="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>{monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}</strong></div><div className="overview-calendar-controls"><button type="button" className="overview-calendar-today" onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}>Hôm nay</button><button type="button" className="overview-calendar-nav" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} aria-label="Tháng trước"><Icon name="back" size={17} /></button><button type="button" className="overview-calendar-nav is-next" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} aria-label="Tháng sau"><Icon name="back" size={17} /></button><button type="button" className="overview-calendar-view">Tháng <Icon name="chevron" size={15} /></button><span className="overview-calendar-icon"><Icon name="calendar" size={20} /></span></div></div><div className="overview-calendar-weekdays">{["THỨ 2", "THỨ 3", "THỨ 4", "THỨ 5", "THỨ 6", "THỨ 7", "CHỦ NHẬT"].map((day) => <span key={day}>{day}</span>)}</div><div className="overview-calendar-days">{cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; return <span key={`${key}-${index}`} className={`${cell.muted ? "is-muted" : ""} ${isSunday ? "is-sunday" : ""} ${isToday ? "is-today" : ""}`}>{cell.day}</span>; })}</div></section>;
+  return <section className="overview-calendar" aria-label="Lịch kế hoạch"><div className="overview-calendar-head"><div><span className="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>{monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}</strong></div><div className="overview-calendar-controls"><button type="button" className="overview-calendar-today" onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}>Hôm nay</button><button type="button" className="overview-calendar-nav" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} aria-label="Tháng trước"><Icon name="back" size={17} /></button><button type="button" className="overview-calendar-nav is-next" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} aria-label="Tháng sau"><Icon name="back" size={17} /></button><button type="button" className="overview-calendar-view">Tháng <Icon name="chevron" size={15} /></button><span className="overview-calendar-icon"><Icon name="calendar" size={20} /></span></div></div><div className="overview-calendar-weekdays">{["THỨ 2", "THỨ 3", "THỨ 4", "THỨ 5", "THỨ 6", "THỨ 7", "CHỦ NHẬT"].map((day) => <span key={day}>{day}</span>)}</div><div className="overview-calendar-days">{cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; const weekday = cell.date.getDay() === 0 ? 7 : cell.date.getDay(); const isTeachingDay = !cell.muted && teachingDays.includes(weekday) && Boolean(teachingTime); return <span key={`${key}-${index}`} className={`${cell.muted ? "is-muted" : ""} ${isSunday ? "is-sunday" : ""} ${isTeachingDay ? "is-scheduled" : ""} ${isToday ? "is-today" : ""}`}><b>{cell.day}</b>{isTeachingDay && <small className="calendar-event-name">{child.name}</small>}{isTeachingDay && <small className="calendar-event-time">{teachingTime}</small>}</span>; })}</div></section>;
 }
 
 function OverviewViewV2({ childList, selectedChildId, onSelectChild, goals, evaluationPeriods, onOpenPlan }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; evaluationPeriods: string[]; onOpenPlan: () => void }) {
   const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
   if (!child) return <div className="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p></div>;
   const childGoals = [...new Set(goals.filter((goal) => goal.childId === child.id).map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.childId === child.id && goal.domain === domain));
-  return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><OverviewCalendar /><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt</span><span><i className="yellow-dot" />Manh nha</span><span><i className="gray-dot" />Chưa đạt</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} readOnly /></>;
+  return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><OverviewCalendar child={child} /><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt</span><span><i className="yellow-dot" />Manh nha</span><span><i className="gray-dot" />Chưa đạt</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} readOnly /></>;
 }
 
 function ShareView({ child, goals, evaluationPeriods }: { child: Child; goals: Goal[]; evaluationPeriods: string[] }) {
