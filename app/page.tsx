@@ -66,7 +66,7 @@ const initialGoals: Goal[] = [
   },
 ];
 
-function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "bell"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   const paths: Record<string, React.ReactNode> = {
     plan: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z" /><path d="M4 5.5v16" /><path d="M8 7h8M8 11h8M8 15h5" /></>,
@@ -83,7 +83,6 @@ function Icon({ name, size = 20 }: { name: "plan" | "children" | "settings" | "t
     save: <><path d="M5 4h12l2 2v14H5z" /><path d="M8 4v5h8V4M8 20v-6h8v6" /></>,
     back: <><path d="M19 12H5M11 6l-6 6 6 6" /></>,
     file: <><path d="M6 3.5h8l4 4V20.5H6z" /><path d="M14 3.5v5h4M9 13h6M9 16h6" /></>,
-    bell: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -104,7 +103,7 @@ function Sidebar({ active, onChange }: { active: View; onChange: (view: View) =>
 }
 
 function Header({ title, subtitle, actionLabel, actionIcon = "plus", onAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; actionIcon?: "plus" | "file"; onAction?: () => void; onBack?: () => void }) {
-  return <header className="topbar"><div className="topbar-title">{onBack && <button className="back-button" type="button" onClick={onBack} aria-label="Quay lại"><Icon name="back" size={24} /></button>}<div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div></div><div className="topbar-actions"><button className="icon-button notification" type="button" aria-label="Thông báo"><Icon name="bell" size={19} /><b>3</b></button><div className="date-pill"><span>30/06/2026</span><Icon name="calendar" size={17} /></div>{actionLabel && <button className="button primary" type="button" onClick={onAction}><Icon name={actionIcon} size={17} />{actionLabel}</button>}</div></header>;
+  return <header className="topbar"><div className="topbar-title">{onBack && <button className="back-button" type="button" onClick={onBack} aria-label="Quay lại"><Icon name="back" size={24} /></button>}<div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div></div><div className="topbar-actions"><div className="date-pill"><span>30/06/2026</span><Icon name="calendar" size={17} /></div>{actionLabel && <button className="button primary" type="button" onClick={onAction}><Icon name={actionIcon} size={17} />{actionLabel}</button>}</div></header>;
 }
 
 function SelectField({ label, value, onChange, options, required = false }: { label: string; value: string; onChange: (value: string) => void; options: string[]; required?: boolean }) {
