@@ -425,7 +425,7 @@ export default function Home() {
       saveCloudData({ ...cloudExtras, children, goals, evaluationPeriods }).catch((error) => console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error));
     }, 250);
     return () => { if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current); };
-  }, [children, goals, evaluationPeriods, cloudExtras, cloudReady]);
+  }, [children, goals, evaluationPeriods, cloudExtras, cloudReady, shareChildId]);
 
   const updateStatus = (id: number, periodIndex: number, status: Status) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, statuses: evaluationPeriods.map((_, index) => index === periodIndex ? status : goal.statuses[index] ?? "Chưa đạt") } : goal));
   const saveChild = (data: Omit<Child, "id">) => { if (editingChild) setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item)); else setChildren((items) => [...items, { ...data, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setShowChildForm(false); setEditingChild(undefined); };

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./mobile-compat.css";
+import "./share.css";
 
 export const metadata: Metadata = {
   title: "Kế hoạch giáo dục cá nhân",
