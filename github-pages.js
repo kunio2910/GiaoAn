@@ -21,6 +21,8 @@
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: loaded?.evaluationPeriods || defaults.evaluationPeriods, children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
   weekLabels = state.evaluationPeriods;
+  const shareChildId = (() => { const value = new URLSearchParams(window.location.search).get('share'); const match = value?.match(/^(?:child-)?(\d+)$/); return match ? Number(match[1]) : null; })();
+  const shareMode = shareChildId !== null;
   let darkMode = localStorage.getItem(themeStorageKey) === 'dark';
   const defaultShortGoals = ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút (có đổi trò chơi).'];
   const defaultLongTerm = 'Duy trì tương tác với giáo viên 5–10 phút';
@@ -47,6 +49,8 @@
   };
   const childById = (id) => state.children.find((child) => child.id === Number(id));
   const selectedChild = () => childById(state.selectedChildId) || state.children[0];
+  const childShareUrl = (childId) => { const url = new URL(window.location.href); url.search = ''; url.hash = ''; url.searchParams.set('share', `child-${childId}`); return url.toString(); };
+  const copyChildShareLink = (childId) => { const child = childById(childId); if (!child) return; const url = childShareUrl(child.id); const fallback = () => window.prompt(`Đường dẫn chia sẻ của ${child.name}`, url); if (!navigator.clipboard?.writeText) { fallback(); return; } navigator.clipboard.writeText(url).then(() => window.alert(`Đã sao chép đường dẫn của ${child.name}.`)).catch(fallback); };
   function applyTheme() {
     document.documentElement.classList.toggle('dark-mode', darkMode);
     localStorage.setItem(themeStorageKey, darkMode ? 'dark' : 'light');
@@ -77,7 +81,18 @@
 
   const tableAdd = (label, action) => `<button type="button" class="table-add-button" data-action="${action}">${icon('plus')}${label}</button>`;
   const statusMarkup = (status, goalId, periodIndex, readOnly) => readOnly ? `<div class="status-select read-only ${status === 'Đạt' ? 'achieved' : status === 'Manh nha' ? 'emerging' : 'not-achieved'}"><span class="status-dot"></span><span>${esc(status)}</span></div>` : `<label class="status-select ${status === 'Đạt' ? 'achieved' : status === 'Manh nha' ? 'emerging' : 'not-achieved'}"><span class="status-dot"></span><select data-goal-id="${goalId}" data-week="${periodIndex}">${statuses.map((item) => `<option ${item === status ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</label>`;
+  function renderGoalsBoard(goals) {
+    const periods = state.evaluationPeriods?.length ? state.evaluationPeriods : weekLabels;
+    const cards = goals.map((goal) => {
+      const shortGoals = goal.shortTerm?.length ? goal.shortTerm.map((item, shortIndex) => `<div class="short-goal-row"><span class="short-goal-bullet"></span><span class="short-goal-text">${esc(item || 'Chưa nhập mục tiêu')}</span><span class="short-goal-actions"><button type="button" class="row-action edit" data-action="edit-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Sửa mục tiêu ngắn hạn">${icon('edit')}</button><button type="button" class="row-action delete" data-action="delete-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></span></div>`).join('') : '<p class="muted-copy">Chưa có mục tiêu ngắn hạn.</p>';
+      const searchText = esc(`${goal.domain || ''} ${goal.longTerm || ''} ${(goal.shortTerm || []).join(' ')}`.toLowerCase());
+      return `<article class="goal-card" data-goal-card data-search="${searchText}"><header class="goal-card-header"><div class="goal-domain-heading"><span class="goal-domain-icon">${icon('target')}</span><div><span class="goal-card-eyebrow">Lĩnh vực</span><h3>${esc(goal.domain || 'Chưa phân loại')}</h3></div></div><div class="goal-card-actions"><button type="button" class="goal-card-action edit" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button type="button" class="goal-card-action delete" data-action="delete-goal" data-goal-id="${goal.id}">${icon('trash')}Xóa</button><button type="button" class="goal-card-note-button" data-action="open-note" data-goal-id="${goal.id}" aria-label="Ghi chú mục tiêu">${icon('note')}</button></div></header><div class="goal-card-main"><section class="goal-long-section"><h4>Mục tiêu dài hạn</h4><p>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</p><button type="button" class="text-action" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Chỉnh sửa mục tiêu dài hạn</button></section><section class="goal-short-section"><div class="goal-card-section-head"><h4>Mục tiêu ngắn hạn</h4><button type="button" class="outline-button compact" data-action="add-short" data-goal-id="${goal.id}">${icon('plus')}Thêm</button></div><div class="short-goal-list">${shortGoals}</div></section></div><section class="goal-results-section"><div class="goal-card-section-head"><div><h4>Kết quả theo tuần</h4><p>Cập nhật trạng thái trực tiếp theo từng giai đoạn.</p></div><button type="button" class="outline-button compact" data-action="add-period">${icon('plus')}Thêm thời gian</button></div><div class="goal-period-grid">${periods.map((label, periodIndex) => `<div class="goal-period"><span class="goal-period-label">${esc(label)}</span>${statusMarkup(goal.statuses?.[periodIndex] || 'Chưa đạt', goal.id, periodIndex, false)}</div>`).join('')}</div></section><footer class="goal-card-footer"><div><h4>Ghi chú</h4><p>${goal.note ? esc(goal.note) : '<span class="cell-placeholder">Chưa có ghi chú.</span>'}</p></div><button type="button" class="note-edit-button" data-action="open-note" data-goal-id="${goal.id}">${icon('note')}${goal.note ? 'Chỉnh sửa ghi chú' : 'Thêm ghi chú'}</button></footer></article>`;
+    }).join('');
+    const empty = `<div class="board-empty-state"><span class="board-empty-icon">${icon('target')}</span><strong>Chưa có mục tiêu phát triển</strong><span>Bắt đầu bằng cách thêm lĩnh vực hoặc mục tiêu dài hạn.</span><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div>`;
+    return `<div class="goals-board"><div class="board-toolbar"><div class="board-search">${icon('overview')}<input type="search" data-goal-search placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm mục tiêu" /></div><span class="board-summary"><strong data-board-count>${goals.length}</strong> mục tiêu đang theo dõi</span><div class="board-actions"><button type="button" class="button board-secondary-action" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div></div><div class="goal-card-list" data-goal-card-list>${cards || empty}</div><div class="board-footer"><span>Hiển thị <strong data-board-footer-count>${goals.length}</strong> mục tiêu</span><span class="board-footer-hint">Mẹo: dùng nút Sửa/Xóa ngay trên từng thẻ để thao tác nhanh.</span></div></div>`;
+  }
   function renderGoalsTable(goals, readOnly = false) {
+    if (!readOnly) return renderGoalsBoard(goals);
     goals = [...new Set(goals.map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.domain === domain));
     const periods = state.evaluationPeriods?.length ? state.evaluationPeriods : weekLabels;
     const counts = goals.reduce((result, goal) => { result[goal.domain] = (result[goal.domain] || 0) + 1; return result; }, {});
@@ -98,13 +113,27 @@
     return `<section class="child-summary">${avatar(child)}<div class="summary-name"><strong>${esc(child.name)}</strong><span>${icon('calendar')}Ngày sinh: ${esc(child.birthday)}</span><span>${icon('user')}Tuổi thực: 1 tuổi 11 tháng</span></div><div class="summary-meta"><span>${icon('user')}Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span>${icon('calendar')}Ngày lập kế hoạch: 30/06/2026</span></div><div class="evaluation-summary"><strong>${icon('calendar')}Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section>`;
   }
 
+  function renderSharePage() {
+    const main = $('.main-content');
+    const child = childById(shareChildId);
+    if (!child) { main.innerHTML = `<div class="share-page"><div class="share-loading"><strong>Không tìm thấy hồ sơ</strong><span>Đường dẫn có thể đã hết hiệu lực hoặc hồ sơ không tồn tại.</span></div></div>`; return; }
+    const goals = state.goals.filter((goal) => goal.childId === child.id);
+    const achieved = goals.reduce((total, goal) => total + (goal.statuses || []).filter((status) => status === 'Đạt').length, 0);
+    main.innerHTML = `<div class="share-page"><div class="share-container"><header class="share-header"><div class="share-brand"><span class="share-brand-mark">${icon('target')}</span><div><strong>KẾ HOẠCH GIÁO DỤC</strong><small>Trang chia sẻ hồ sơ trẻ</small></div></div><span class="share-readonly">${icon('file')}Chỉ xem</span></header><section class="share-hero"><span class="share-eyebrow">HỒ SƠ TRẺ</span><h1>${esc(child.name)}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section>${childSummaryMarkup(child)}<div class="share-summary"><span><strong>${goals.length}</strong> mục tiêu đang theo dõi</span><span><strong>${achieved}</strong> kết quả đạt</span><span>Không cho phép chỉnh sửa</span></div><section class="share-goals"><div class="share-section-heading"><div><span class="share-eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><span class="share-lock">${icon('file')}Chế độ chỉ xem</span></div>${renderGoalsTable(goals, true)}</section><footer class="share-footer">Đường dẫn này chỉ hiển thị thông tin của <strong>${esc(child.name)}</strong>.</footer></div></div>`;
+  }
+
+  const overviewCalendarDays = [null, ...Array.from({ length: 30 }, (_, index) => index + 1), null, null, null, null];
+  function overviewCalendarMarkup() {
+    const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>Tháng 6 2026</strong></div><span class="overview-calendar-icon">${icon('calendar')}</span></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${overviewCalendarDays.map((day, index) => `<span class="${day === 30 ? 'is-selected' : day === null ? 'is-empty' : ''}" data-day-index="${index}">${day ?? ''}</span>`).join('')}</div></section>`;
+  }
+
   function renderOverview() {
     const child = selectedChild();
     if (!child) { $('#screen-overview').innerHTML = `<div class="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const goals = state.goals.filter((goal) => goal.childId === child.id);
-    const achieved = goals.reduce((total, goal) => total + (goal.statuses || []).filter((status) => status === 'Đạt').length, 0);
     const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('file')}Xem kế hoạch`, 'view-plan', true)}</div>`;
-    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}<div class="overview-grid"><article class="overview-card"><span class="overview-card-label">Hồ sơ trẻ</span><strong>${state.children.length}</strong><small>đang được quản lý</small></article><article class="overview-card"><span class="overview-card-label">Mục tiêu đang theo dõi</span><strong>${goals.length}</strong><small>của ${esc(child.name)}</small></article><article class="overview-card success"><span class="overview-card-label">Kết quả đạt</span><strong>${achieved}</strong><small>trạng thái theo tuần</small></article></div><div class="overview-toolbar">${selectField('Đang xem tổng quan của', 'overview-child-select', state.children.map((item) => ({ value: item.id, label: item.name })), child.id)}</div>${childSummaryMarkup(child)}<div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div>${renderGoalsTable(goals, true)}`;
+    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}${overviewCalendarMarkup()}<div class="overview-toolbar">${selectField('Đang xem tổng quan của', 'overview-child-select', state.children.map((item) => ({ value: item.id, label: item.name })), child.id)}</div>${childSummaryMarkup(child)}<div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div>${renderGoalsTable(goals, true)}`;
   }
 
   function renderOverviewLegacy() {
@@ -140,8 +169,11 @@
     decorateNotes();
   }
 
+  void renderOverviewLegacy;
+  void renderPlanLegacy;
+
   function renderChildren() {
-    const cards = state.children.map((child) => `<article class="child-card"><div class="child-card-head">${avatar(child, true)}<div><h3>${esc(child.name)}</h3><p>${esc(child.gender)} · Sinh ngày ${esc(child.birthday)}</p></div></div><div class="child-card-note">${icon('note')}${esc(child.note || 'Chưa có ghi chú')}</div><div class="child-card-actions"><button type="button" class="link-button" data-plan-child="${child.id}">Xem kế hoạch <span>→</span></button><div><button type="button" class="icon-action edit" data-edit-child="${child.id}" aria-label="Chỉnh sửa ${esc(child.name)}">${icon('edit')}</button><button type="button" class="icon-action delete" data-delete-child="${child.id}" aria-label="Xóa ${esc(child.name)}">${icon('trash')}</button></div></div></article>`).join('');
+    const cards = state.children.map((child) => `<article class="child-card"><div class="child-card-head">${avatar(child, true)}<div><h3>${esc(child.name)}</h3><p>${esc(child.gender)} · Sinh ngày ${esc(child.birthday)}</p></div></div><div class="child-card-note">${icon('note')}${esc(child.note || 'Chưa có ghi chú')}</div><div class="child-card-actions"><div class="child-card-links"><button type="button" class="link-button" data-plan-child="${child.id}">Xem kế hoạch <span>→</span></button><button type="button" class="link-button share-link-button" data-share-child="${child.id}">${icon('share')}Chia sẻ</button></div><div><button type="button" class="icon-action edit" data-edit-child="${child.id}" aria-label="Chỉnh sửa ${esc(child.name)}">${icon('edit')}</button><button type="button" class="icon-action delete" data-delete-child="${child.id}" aria-label="Xóa ${esc(child.name)}">${icon('trash')}</button></div></div></article>`).join('');
     $('#screen-children').innerHTML = `${header('Hồ sơ trẻ', `${state.children.length} hồ sơ đang được quản lý`, button(`${icon('plus')}Thêm trẻ`, 'open-child', true))}<div class="children-intro"><div class="intro-icon">${icon('children')}</div><div><h2>Thông tin tất cả các trẻ</h2><p>Quản lý hồ sơ và mở kế hoạch giáo dục riêng cho từng trẻ.</p></div></div><div class="children-grid">${cards}</div>${!state.children.length ? `<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Nhấn “Thêm trẻ” để nhập hồ sơ đầu tiên.</p></div>` : ''}`;
   }
 
@@ -256,8 +288,8 @@
     if (action.dataset.action === 'add-domain') openGoalModal('domain');
     if (action.dataset.action === 'add-long') openGoalModal('long');
     if (action.dataset.action === 'add-short') {
-      const firstGoal = state.goals.find((item) => item.childId === state.selectedChildId);
-      if (firstGoal) openGoalModal('short', firstGoal.id); else window.alert('Hãy thêm mục tiêu dài hạn trước.');
+      const targetGoal = action.dataset.goalId ? state.goals.find((item) => item.id === Number(action.dataset.goalId)) : state.goals.find((item) => item.childId === state.selectedChildId);
+      if (targetGoal) openGoalModal('short', targetGoal.id); else window.alert('Hãy thêm mục tiêu dài hạn trước.');
     }
     if (action.dataset.action === 'add-period') openGoalModal('period');
     if (action.dataset.action === 'edit-long' && goal) openGoalModal('edit-long', goal.id);
@@ -276,7 +308,7 @@
     if (select.id === 'objective-domain') { updateObjectivePreview(); return; }
     if (select.dataset.goalId) { const goal = state.goals.find((item) => item.id === Number(select.dataset.goalId)); if (goal) { goal.statuses[Number(select.dataset.week)] = select.value; persist(); renderPlan(); } }
   });
-  document.addEventListener('input', (event) => { if (event.target.dataset.shortGoal !== undefined) { draftShortGoals[Number(event.target.dataset.shortGoal)] = event.target.value; updateObjectivePreview(); } if (event.target.id === 'objective-long') { draftLongTerm = event.target.value; updateObjectivePreview(); } });
+  document.addEventListener('input', (event) => { if (event.target.matches('[data-goal-search]')) { const query = event.target.value.trim().toLowerCase(); const cards = [...document.querySelectorAll('[data-goal-card]')]; let visible = 0; cards.forEach((card) => { const matches = !query || card.dataset.search.includes(query); card.hidden = !matches; if (matches) visible += 1; }); const count = document.querySelector('[data-board-count]'); const footerCount = document.querySelector('[data-board-footer-count]'); if (count) count.textContent = String(visible); if (footerCount) footerCount.textContent = String(visible); return; } if (event.target.dataset.shortGoal !== undefined) { draftShortGoals[Number(event.target.dataset.shortGoal)] = event.target.value; updateObjectivePreview(); } if (event.target.id === 'objective-long') { draftLongTerm = event.target.value; updateObjectivePreview(); } });
   document.addEventListener('submit', (event) => {
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();

@@ -76,7 +76,7 @@ const initialGoals: Goal[] = [
   },
 ];
 
-function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "moon" | "sun"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "settings" | "target" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "share" | "moon" | "sun"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   const paths: Record<string, React.ReactNode> = {
     overview: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
@@ -94,6 +94,7 @@ function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "s
     save: <><path d="M5 4h12l2 2v14H5z" /><path d="M8 4v5h8V4M8 20v-6h8v6" /></>,
     back: <><path d="M19 12H5M11 6l-6 6 6 6" /></>,
     file: <><path d="M6 3.5h8l4 4V20.5H6z" /><path d="M14 3.5v5h4M9 13h6M9 16h6" /></>,
+    share: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4" /></>,
     moon: <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2z" />,
     sun: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" /></>,
   };
@@ -132,6 +133,31 @@ function ChildAvatar({ name, large = false }: { name: string; large?: boolean })
   return <div className={`child-avatar ${large ? "large" : ""}`} aria-label={`Ảnh của ${name}`}><span>{name.split(" ").map((part) => part[0]).slice(-2).join("")}</span></div>;
 }
 
+function childShareUrl(childId: number) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("share", `child-${childId}`);
+  return url.toString();
+}
+
+function copyChildShareLink(child: Child) {
+  const url = childShareUrl(child.id);
+  const fallback = () => window.prompt(`Đường dẫn chia sẻ của ${child.name}`, url);
+  if (!navigator.clipboard?.writeText) {
+    fallback();
+    return;
+  }
+  void navigator.clipboard.writeText(url).then(() => window.alert(`Đã sao chép đường dẫn của ${child.name}.`)).catch(fallback);
+}
+
+function sharedChildIdFromUrl() {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("share");
+  const match = value?.match(/^(?:child-)?(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
 function ChildSummary({ child }: { child: Child }) {
   return <section className="child-summary"><ChildAvatar name={child.name} /><div className="summary-name"><strong>{child.name}</strong><span><Icon name="calendar" size={16} /> Ngày sinh: {child.birthday}</span><span><Icon name="user" size={16} /> Tuổi thực: 1 tuổi 11 tháng</span></div><div className="summary-meta"><span><Icon name="user" size={16} /> Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span><Icon name="calendar" size={16} /> Ngày lập kế hoạch: 30/06/2026</span></div><div className="evaluation-summary"><strong><Icon name="calendar" size={16} /> Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section>;
 }
@@ -161,7 +187,7 @@ function ChildForm({ child, onCancel, onSave }: { child?: Child; onCancel: () =>
 }
 
 function ChildrenView({ childList, onAdd, onEdit, onDelete, onSelectPlan }: { childList: Child[]; onAdd: () => void; onEdit: (child: Child) => void; onDelete: (id: number) => void; onSelectPlan: (id: number) => void }) {
-  return <><Header title="Hồ sơ trẻ" subtitle={`${childList.length} hồ sơ đang được quản lý`} actionLabel="Thêm trẻ" onAction={onAdd} /><div className="children-intro"><div className="intro-icon"><Icon name="children" size={27} /></div><div><h2>Thông tin tất cả các trẻ</h2><p>Quản lý hồ sơ và mở kế hoạch giáo dục riêng cho từng trẻ.</p></div></div><div className="children-grid">{childList.map((child) => <article className="child-card" key={child.id}><div className="child-card-head"><ChildAvatar name={child.name} /><div><h3>{child.name}</h3><p>{child.gender} · Sinh ngày {child.birthday}</p></div></div><div className="child-card-note"><Icon name="note" size={17} />{child.note || "Chưa có ghi chú"}</div><div className="child-card-actions"><button type="button" className="link-button" onClick={() => onSelectPlan(child.id)}>Xem kế hoạch <span>→</span></button><div><button type="button" className="icon-action edit" onClick={() => onEdit(child)} aria-label={`Chỉnh sửa ${child.name}`}><Icon name="edit" size={18} /></button><button type="button" className="icon-action delete" onClick={() => onDelete(child.id)} aria-label={`Xóa ${child.name}`}><Icon name="trash" size={18} /></button></div></div></article>)}</div>{childList.length === 0 && <div className="empty-state"><Icon name="children" size={34} /><h3>Chưa có hồ sơ trẻ</h3><p>Nhấn “Thêm trẻ” để nhập hồ sơ đầu tiên.</p></div>}</>;
+  return <><Header title="Hồ sơ trẻ" subtitle={`${childList.length} hồ sơ đang được quản lý`} actionLabel="Thêm trẻ" onAction={onAdd} /><div className="children-intro"><div className="intro-icon"><Icon name="children" size={27} /></div><div><h2>Thông tin tất cả các trẻ</h2><p>Quản lý hồ sơ và mở kế hoạch giáo dục riêng cho từng trẻ.</p></div></div><div className="children-grid">{childList.map((child) => <article className="child-card" key={child.id}><div className="child-card-head"><ChildAvatar name={child.name} /><div><h3>{child.name}</h3><p>{child.gender} · Sinh ngày {child.birthday}</p></div></div><div className="child-card-note"><Icon name="note" size={17} />{child.note || "Chưa có ghi chú"}</div><div className="child-card-actions"><div className="child-card-links"><button type="button" className="link-button" onClick={() => onSelectPlan(child.id)}>Xem kế hoạch <span>→</span></button><button type="button" className="link-button share-link-button" onClick={() => copyChildShareLink(child)}><Icon name="share" size={15} />Chia sẻ</button></div><div><button type="button" className="icon-action edit" onClick={() => onEdit(child)} aria-label={`Chỉnh sửa ${child.name}`}><Icon name="edit" size={18} /></button><button type="button" className="icon-action delete" onClick={() => onDelete(child.id)} aria-label={`Xóa ${child.name}`}><Icon name="trash" size={18} /></button></div></div></article>)}</div>{childList.length === 0 && <div className="empty-state"><Icon name="children" size={34} /><h3>Chưa có hồ sơ trẻ</h3><p>Nhấn “Thêm trẻ” để nhập hồ sơ đầu tiên.</p></div>}</>;
 }
 
 function ObjectiveForm({ childList, onCancel, onSaved }: { childList: Child[]; onCancel: () => void; onSaved: (goal: Omit<Goal, "id">) => void }) {
@@ -253,10 +279,59 @@ function GoalsTableV2({
   onEditShort?: (goal: Goal, index: number) => void;
   onDeleteShort?: (goal: Goal, index: number) => void;
 }) {
+  if (!readOnly) return <GoalsBoardV2 goals={inputGoals} evaluationPeriods={evaluationPeriods} onStatusChange={onStatusChange ?? (() => undefined)} onNoteClick={onNoteClick ?? (() => undefined)} onAddDomain={onAddDomain ?? (() => undefined)} onAddLong={onAddLong ?? (() => undefined)} onAddShort={onAddShort ?? (() => undefined)} onAddPeriod={onAddPeriod ?? (() => undefined)} onEditLong={onEditLong ?? (() => undefined)} onDeleteGoal={onDeleteGoal ?? (() => undefined)} onEditShort={onEditShort ?? (() => undefined)} onDeleteShort={onDeleteShort ?? (() => undefined)} />;
   const goals = [...new Set(inputGoals.map((goal) => goal.domain))].flatMap((domain) => inputGoals.filter((goal) => goal.domain === domain));
   const domainCounts = goals.reduce<Record<string, number>>((counts, goal) => ({ ...counts, [goal.domain]: (counts[goal.domain] ?? 0) + 1 }), {});
   const periodLabels = evaluationPeriods.length ? evaluationPeriods : ["Chưa có thời gian"];
   return <div className="table-scroll"><table className="goals-table"><thead><tr><th><div className="table-head-title">LĨNH VỰC<AddTableButton onClick={readOnly ? undefined : onAddDomain} /></div></th><th><div className="table-head-title">MỤC TIÊU DÀI HẠN<AddTableButton onClick={readOnly ? undefined : onAddLong} /></div></th><th><div className="table-head-title">MỤC TIÊU NGẮN HẠN<AddTableButton onClick={readOnly ? undefined : onAddShort} /></div></th><th colSpan={periodLabels.length}><div className="table-head-title">KẾT QUẢ<AddTableButton onClick={readOnly ? undefined : onAddPeriod} /></div></th><th>GHI CHÚ</th></tr><tr className="period-header"><th /><th /><th />{periodLabels.map((label) => <th key={label}>{label}</th>)}<th /></tr></thead><tbody>{goals.map((goal, index) => { const isFirstDomainRow = index === 0 || goals[index - 1].domain !== goal.domain; const statuses = periodLabels.map((_, periodIndex) => goal.statuses[periodIndex] ?? "Chưa đạt"); return <tr key={goal.id}>{isFirstDomainRow && <td className="domain-cell" rowSpan={domainCounts[goal.domain]}><span className="domain-icon"><Icon name="target" size={21} /></span><strong>{goal.domain || "Chưa phân loại"}</strong></td>}<td className="long-term-cell"><div>{goal.longTerm || <span className="cell-placeholder">Chưa nhập mục tiêu</span>}</div>{!readOnly && <div className="goal-inline-actions"><button type="button" className="goal-edit-button" onClick={() => onEditLong?.(goal)}><Icon name="edit" size={16} />Sửa</button><button type="button" className="goal-delete-button" onClick={() => onDeleteGoal?.(goal)}><Icon name="trash" size={16} />Xóa</button></div>}</td><td className="short-term-cell">{goal.shortTerm.length ? <ul>{goal.shortTerm.map((item, shortIndex) => <li key={`${goal.id}-${shortIndex}`}><span>{item || <span className="cell-placeholder">Chưa nhập mục tiêu</span>}</span>{!readOnly && <span className="goal-inline-actions"><button type="button" className="goal-edit-button" onClick={() => onEditShort?.(goal, shortIndex)}><Icon name="edit" size={15} />Sửa</button><button type="button" className="goal-delete-button" onClick={() => onDeleteShort?.(goal, shortIndex)}><Icon name="trash" size={15} />Xóa</button></span>}</li>)}</ul> : <span className="cell-placeholder">Chưa có mục tiêu ngắn hạn</span>}</td>{statuses.map((status, periodIndex) => <td className="result-cell" key={`${goal.id}-${periodIndex}`}>{readOnly ? <ReadOnlyStatus value={status} /> : <EditableStatus value={status} onChange={(next) => onStatusChange?.(goal.id, periodIndex, next)} />}</td>)}<td className="row-note">{readOnly ? <><span className="note-icon-display"><Icon name="note" size={20} /></span>{goal.note ? <span className="note-content" title={goal.note}>{goal.note}</span> : <span className="cell-placeholder">Chưa có ghi chú</span>}</> : <button type="button" aria-label={`Ghi chú mục tiêu ${goal.longTerm || goal.domain}`} onClick={() => onNoteClick?.(goal.id)}><Icon name="note" size={21} /></button>}</td></tr>; })}</tbody></table>{!goals.length && <div className="table-empty-state"><Icon name="target" size={30} /><strong>Chưa có mục tiêu phát triển</strong><span>Nhấn “Thêm” để bắt đầu tạo mục tiêu cho trẻ.</span></div>}<div className="table-footer"><span>Hiển thị {goals.length} mục tiêu</span><div className="pagination" aria-label="Phân trang"><button type="button" disabled aria-label="Trang đầu">|‹</button><button type="button" disabled aria-label="Trang trước">‹</button><button type="button" className="active" aria-current="page">1</button><button type="button" disabled aria-label="Trang sau">›</button><button type="button" disabled aria-label="Trang cuối">›|</button></div></div></div>;
+}
+
+function GoalsBoardV2({
+  goals,
+  evaluationPeriods,
+  onStatusChange,
+  onNoteClick,
+  onAddDomain,
+  onAddLong,
+  onAddShort,
+  onAddPeriod,
+  onEditLong,
+  onDeleteGoal,
+  onEditShort,
+  onDeleteShort,
+}: {
+  goals: Goal[];
+  evaluationPeriods: string[];
+  onStatusChange: (id: number, week: number, status: Status) => void;
+  onNoteClick: (id: number) => void;
+  onAddDomain: () => void;
+  onAddLong: () => void;
+  onAddShort: (goal?: Goal) => void;
+  onAddPeriod: () => void;
+  onEditLong: (goal: Goal) => void;
+  onDeleteGoal: (goal: Goal) => void;
+  onEditShort: (goal: Goal, index: number) => void;
+  onDeleteShort: (goal: Goal, index: number) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const periods = evaluationPeriods.length ? evaluationPeriods : ["Chưa có thời gian"];
+  const visibleGoals = goals.filter((goal) => `${goal.domain} ${goal.longTerm} ${goal.shortTerm.join(" ")}`.toLowerCase().includes(search.trim().toLowerCase()));
+  return <div className="goals-board">
+    <div className="board-toolbar">
+      <div className="board-search"><Icon name="overview" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm mục tiêu" /></div>
+      <span className="board-summary"><strong>{visibleGoals.length}</strong> mục tiêu đang theo dõi</span>
+      <div className="board-actions"><button type="button" className="button board-secondary-action" onClick={onAddDomain}><Icon name="plus" size={17} />Thêm lĩnh vực</button><button type="button" className="button primary" onClick={onAddLong}><Icon name="plus" size={17} />Thêm mục tiêu</button></div>
+    </div>
+    {!visibleGoals.length ? <div className="board-empty-state"><span className="board-empty-icon"><Icon name="target" size={28} /></span><strong>{search ? "Không tìm thấy mục tiêu" : "Chưa có mục tiêu phát triển"}</strong><span>{search ? "Thử từ khóa khác hoặc xóa bộ lọc." : "Bắt đầu bằng cách thêm lĩnh vực hoặc mục tiêu dài hạn."}</span>{!search && <button type="button" className="button primary" onClick={onAddLong}><Icon name="plus" size={17} />Thêm mục tiêu</button>}</div> : <div className="goal-card-list">
+      {visibleGoals.map((goal) => <article className="goal-card" key={goal.id}>
+        <header className="goal-card-header"><div className="goal-domain-heading"><span className="goal-domain-icon"><Icon name="target" size={22} /></span><div><span className="goal-card-eyebrow">Lĩnh vực</span><h3>{goal.domain || "Chưa phân loại"}</h3></div></div><div className="goal-card-actions"><button type="button" className="goal-card-action edit" onClick={() => onEditLong(goal)}><Icon name="edit" size={16} />Sửa</button><button type="button" className="goal-card-action delete" onClick={() => onDeleteGoal(goal)}><Icon name="trash" size={16} />Xóa</button><button type="button" className="goal-card-note-button" onClick={() => onNoteClick(goal.id)} aria-label={`Ghi chú ${goal.domain}`}><Icon name="note" size={18} /></button></div></header>
+        <div className="goal-card-main"><section className="goal-long-section"><h4>Mục tiêu dài hạn</h4><p>{goal.longTerm || <span className="cell-placeholder">Chưa nhập mục tiêu</span>}</p><button type="button" className="text-action" onClick={() => onEditLong(goal)}><Icon name="edit" size={15} />Chỉnh sửa mục tiêu dài hạn</button></section><section className="goal-short-section"><div className="goal-card-section-head"><h4>Mục tiêu ngắn hạn</h4><button type="button" className="outline-button compact" onClick={() => onAddShort(goal)}><Icon name="plus" size={15} />Thêm</button></div>{goal.shortTerm.length ? <div className="short-goal-list">{goal.shortTerm.map((item, index) => <div className="short-goal-row" key={`${goal.id}-${index}`}><span className="short-goal-bullet" /><span className="short-goal-text">{item || <span className="cell-placeholder">Chưa nhập mục tiêu</span>}</span><span className="short-goal-actions"><button type="button" className="row-action edit" onClick={() => onEditShort(goal, index)} aria-label="Sửa mục tiêu ngắn hạn"><Icon name="edit" size={15} /></button><button type="button" className="row-action delete" onClick={() => onDeleteShort(goal, index)} aria-label="Xóa mục tiêu ngắn hạn"><Icon name="trash" size={15} /></button></span></div>)}</div> : <p className="muted-copy">Chưa có mục tiêu ngắn hạn.</p>}</section></div>
+        <section className="goal-results-section"><div className="goal-card-section-head"><div><h4>Kết quả theo tuần</h4><p>Cập nhật trạng thái trực tiếp theo từng giai đoạn.</p></div><button type="button" className="outline-button compact" onClick={onAddPeriod}><Icon name="plus" size={15} />Thêm thời gian</button></div><div className="goal-period-grid">{periods.map((label, periodIndex) => <div className="goal-period" key={`${goal.id}-${label}`}><span className="goal-period-label">{label}</span><EditableStatus value={goal.statuses[periodIndex] ?? "Chưa đạt"} onChange={(next) => onStatusChange(goal.id, periodIndex, next)} /></div>)}</div></section>
+        <footer className="goal-card-footer"><div><h4>Ghi chú</h4><p>{goal.note || <span className="cell-placeholder">Chưa có ghi chú.</span>}</p></div><button type="button" className="note-edit-button" onClick={() => onNoteClick(goal.id)}><Icon name="note" size={16} />{goal.note ? "Chỉnh sửa ghi chú" : "Thêm ghi chú"}</button></footer>
+      </article>)}
+    </div>}
+    <div className="board-footer"><span>Hiển thị {visibleGoals.length} mục tiêu</span><span className="board-footer-hint">Mẹo: dùng nút Sửa/Xóa ngay trên từng thẻ để thao tác nhanh.</span></div>
+  </div>;
 }
 
 function GoalDialog({ mode, goals, initialValue = "", initialGoalId, initialDomain, onCancel, onSave }: { mode: GoalDialogMode; goals: Goal[]; initialValue?: string; initialGoalId?: number; initialDomain?: string; onCancel: () => void; onSave: (data: GoalDialogSave) => void }) {
@@ -284,12 +359,22 @@ function PlanViewV2({ childList, selectedChildId, onSelectChild, goals, evaluati
   return <><Header title="Kế hoạch giáo dục" actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} /><div className="plan-toolbar"><SelectField label="Đang xem hồ sơ của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /><div className="plan-count"><span className="count-number">{childGoals.length}</span><span>mục tiêu đang theo dõi</span></div></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="calendar" size={21} /> MỤC TIÊU PHÁT TRIỂN</h2><p>Các mục tiêu được cài đặt riêng cho {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt (Đ)</span><span><i className="yellow-dot" />Manh nha (MN)</span><span><i className="gray-dot" />Chưa đạt (CĐ)</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} onStatusChange={onStatusChange} onNoteClick={onNoteClick} onAddDomain={onAddDomain} onAddLong={onAddLong} onAddShort={onAddShort} onAddPeriod={onAddPeriod} onEditLong={onEditLong} onDeleteGoal={onDeleteGoal} onEditShort={onEditShort} onDeleteShort={onDeleteShort} /></>;
 }
 
+const OVERVIEW_CALENDAR_DAYS: Array<number | null> = [null, ...Array.from({ length: 30 }, (_, index) => index + 1), null, null, null, null];
+
+function OverviewCalendar() {
+  return <section className="overview-calendar" aria-label="Lịch kế hoạch"><div className="overview-calendar-head"><div><span className="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>Tháng 6 2026</strong></div><span className="overview-calendar-icon"><Icon name="calendar" size={21} /></span></div><div className="overview-calendar-weekdays">{["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day) => <span key={day}>{day}</span>)}</div><div className="overview-calendar-days">{OVERVIEW_CALENDAR_DAYS.map((day, index) => <span key={`${day ?? "empty"}-${index}`} className={day === 30 ? "is-selected" : day === null ? "is-empty" : ""}>{day}</span>)}</div></section>;
+}
+
 function OverviewViewV2({ childList, selectedChildId, onSelectChild, goals, evaluationPeriods, onOpenPlan }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; evaluationPeriods: string[]; onOpenPlan: () => void }) {
   const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
   if (!child) return <div className="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p></div>;
   const childGoals = [...new Set(goals.filter((goal) => goal.childId === child.id).map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.childId === child.id && goal.domain === domain));
-  const achievedCount = childGoals.reduce((total, goal) => total + goal.statuses.filter((status) => status === "Đạt").length, 0);
-  return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><div className="overview-grid"><article className="overview-card"><span className="overview-card-label">Hồ sơ trẻ</span><strong>{childList.length}</strong><small>đang được quản lý</small></article><article className="overview-card"><span className="overview-card-label">Mục tiêu đang theo dõi</span><strong>{childGoals.length}</strong><small>của {child.name}</small></article><article className="overview-card success"><span className="overview-card-label">Kết quả đạt</span><strong>{achievedCount}</strong><small>trạng thái theo tuần</small></article></div><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt</span><span><i className="yellow-dot" />Manh nha</span><span><i className="gray-dot" />Chưa đạt</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} readOnly /></>;
+  return <><Header title="Tổng quan" subtitle="Theo dõi nhanh kế hoạch giáo dục của các trẻ" actionLabel="Xem kế hoạch" actionIcon="file" onAction={onOpenPlan} /><OverviewCalendar /><div className="overview-toolbar"><SelectField label="Đang xem tổng quan của" value={child.name} onChange={(name) => { const next = childList.find((item) => item.name === name); if (next) onSelectChild(next.id); }} options={childList.map((item) => item.name)} /></div><ChildSummary child={child} /><div className="section-title-row"><div><h2><Icon name="overview" size={21} /> Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt</span><span><i className="yellow-dot" />Manh nha</span><span><i className="gray-dot" />Chưa đạt</span></div></div><GoalsTableV2 goals={childGoals} evaluationPeriods={evaluationPeriods} readOnly /></>;
+}
+
+function ShareView({ child, goals, evaluationPeriods }: { child: Child; goals: Goal[]; evaluationPeriods: string[] }) {
+  const achievedCount = goals.reduce((total, goal) => total + goal.statuses.filter((status) => status === "Đạt").length, 0);
+  return <main className="share-page"><div className="share-container"><header className="share-header"><div className="share-brand"><span className="share-brand-mark"><Icon name="target" size={20} /></span><div><strong>KẾ HOẠCH GIÁO DỤC</strong><small>Trang chia sẻ hồ sơ trẻ</small></div></div><span className="share-readonly"><Icon name="file" size={16} />Chỉ xem</span></header><section className="share-hero"><span className="share-eyebrow">HỒ SƠ TRẺ</span><h1>{child.name}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section><ChildSummary child={child} /><div className="share-summary"><span><strong>{goals.length}</strong> mục tiêu đang theo dõi</span><span><strong>{achievedCount}</strong> kết quả đạt</span><span>Không cho phép chỉnh sửa</span></div><section className="share-goals"><div className="share-section-heading"><div><span className="share-eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><span className="share-lock"><Icon name="file" size={16} />Chế độ chỉ xem</span></div><GoalsTableV2 goals={goals} evaluationPeriods={evaluationPeriods} readOnly /></section><footer className="share-footer">Đường dẫn này chỉ hiển thị thông tin của <strong>{child.name}</strong>.</footer></div></main>;
 }
 
 /* eslint-enable jsx-a11y/no-autofocus */
@@ -301,6 +386,7 @@ function SettingsView({ darkMode, onToggleTheme }: { darkMode: boolean; onToggle
 
 export default function Home() {
   const [view, setView] = useState<View>("plan");
+  const [shareChildId] = useState<number | null>(() => sharedChildIdFromUrl());
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -311,6 +397,7 @@ export default function Home() {
   const [goalDialog, setGoalDialog] = useState<GoalDialogState | null>(null);
   const [noteGoalId, setNoteGoalId] = useState<number | null>(null);
   const [cloudReady, setCloudReady] = useState(false);
+  const [cloudError, setCloudError] = useState(false);
   const [cloudExtras, setCloudExtras] = useState<Record<string, unknown>>({});
   const cloudSaveTimer = useRef<number | null>(null);
 
@@ -327,12 +414,12 @@ export default function Home() {
       setCloudReady(true);
     }).catch((error) => {
       console.error("Không thể tải dữ liệu từ Google Sheet:", error);
-      if (active) setCloudReady(false);
+      if (active) setCloudError(true);
     });
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    if (!cloudReady) return;
+    if (!cloudReady || shareChildId !== null) return;
     if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current);
     cloudSaveTimer.current = window.setTimeout(() => {
       saveCloudData({ ...cloudExtras, children, goals, evaluationPeriods }).catch((error) => console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error));
@@ -369,6 +456,12 @@ export default function Home() {
   const currentChildGoals = goals.filter((goal) => goal.childId === selectedChildId);
   const currentView = useMemo(() => view, [view]);
   const noteGoal = goals.find((goal) => goal.id === noteGoalId);
+  if (shareChildId !== null) {
+    const sharedChild = children.find((child) => child.id === shareChildId);
+    if (!cloudReady && !cloudError) return <div className="share-page"><div className="share-loading">Đang tải hồ sơ được chia sẻ…</div></div>;
+    if (!sharedChild) return <div className="share-page"><div className="share-loading"><strong>Không tìm thấy hồ sơ</strong><span>Đường dẫn có thể đã hết hiệu lực hoặc hồ sơ không tồn tại.</span></div></div>;
+    return <ShareView child={sharedChild} goals={goals.filter((goal) => goal.childId === sharedChild.id)} evaluationPeriods={evaluationPeriods} />;
+  }
   return <div className="app-shell"><SidebarV2 active={currentView} onChange={navigate} /><main className="main-content">{view === "overview" && <OverviewViewV2 childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} evaluationPeriods={evaluationPeriods} onOpenPlan={() => setView("plan")} />}{view === "plan" && <PlanViewV2 childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} evaluationPeriods={evaluationPeriods} onStatusChange={updateStatus} onNoteClick={setNoteGoalId} onAddDomain={() => openGoalDialog({ mode: "domain" })} onAddLong={() => openGoalDialog({ mode: "long", initialDomain: currentChildGoals[0]?.domain })} onAddShort={() => { if (!currentChildGoals.length) { window.alert("Hãy thêm mục tiêu dài hạn trước."); return; } openGoalDialog({ mode: "short", initialGoalId: currentChildGoals[0].id }); }} onAddPeriod={() => openGoalDialog({ mode: "period" })} onEditLong={(goal) => openGoalDialog({ mode: "edit-long", goalId: goal.id, initialValue: goal.longTerm })} onDeleteGoal={deleteGoal} onEditShort={(goal, index) => openGoalDialog({ mode: "edit-short", goalId: goal.id, shortIndex: index, initialValue: goal.shortTerm[index] })} onDeleteShort={deleteShort} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView darkMode={darkMode} onToggleTheme={() => setDarkMode((value) => !value)} />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}{goalDialog && <GoalDialog mode={goalDialog.mode} goals={currentChildGoals} initialValue={goalDialog.initialValue} initialGoalId={goalDialog.goalId} initialDomain={goalDialog.initialValue} onCancel={() => setGoalDialog(null)} onSave={saveGoalDialog} />}{noteGoalId !== null && <NoteDialog goal={noteGoal} onCancel={() => setNoteGoalId(null)} onSave={saveNote} />}</div>;
 }
 
