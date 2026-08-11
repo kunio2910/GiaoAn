@@ -16,6 +16,8 @@
       { id: 3, childId: 2, domain: 'Chú ý chung', longTerm: 'Nhìn theo người lớn và đồ vật được chỉ dẫn', shortTerm: ['Nhìn theo khi cô chỉ vào đồ vật gần.', 'Luân phiên nhìn người và đồ vật 2–3 lần.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Chưa đạt', 'Manh nha', 'Đạt', 'Đạt'] }
     ]
   };
+  defaults.children = [];
+  defaults.goals = [];
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: loaded?.evaluationPeriods || defaults.evaluationPeriods, children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
   weekLabels = state.evaluationPeriods;
@@ -325,8 +327,12 @@
   if (window.GiaoAnCloud) {
     window.GiaoAnCloud.load().then((data) => {
       if (!data || typeof data !== 'object' || !Object.keys(data).length) {
-        // Lần đầu kết nối: giữ dữ liệu hiện có rồi tạo bản JSON trên Sheet.
-        persist();
+        state.children = [];
+        state.goals = [];
+        state.evaluationPeriods = [...weekLabels];
+        state.selectedChildId = 0;
+        localStorage.setItem(storageKey, JSON.stringify(persistentData()));
+        render();
         return;
       }
 

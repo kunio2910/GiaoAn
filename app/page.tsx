@@ -302,10 +302,10 @@ function SettingsView({ darkMode, onToggleTheme }: { darkMode: boolean; onToggle
 export default function Home() {
   const [view, setView] = useState<View>("plan");
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
-  const [children, setChildren] = useState<Child[]>(initialChildren);
-  const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [evaluationPeriods, setEvaluationPeriods] = useState<string[]>(DEFAULT_EVALUATION_PERIODS);
-  const [selectedChildId, setSelectedChildId] = useState(initialChildren[0].id);
+  const [selectedChildId, setSelectedChildId] = useState(0);
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
   const [goalDialog, setGoalDialog] = useState<GoalDialogState | null>(null);
@@ -319,17 +319,15 @@ export default function Home() {
     let active = true;
     loadCloudData<AppCloudData>().then((data) => {
       if (!active) return;
-      if (data) {
-        const { children: cloudChildren, goals: cloudGoals, evaluationPeriods: cloudPeriods, ...extras } = data;
-        setCloudExtras(extras);
-        if (Array.isArray(cloudChildren)) setChildren(cloudChildren);
-        if (Array.isArray(cloudGoals)) setGoals(cloudGoals);
-        if (Array.isArray(cloudPeriods) && cloudPeriods.length) setEvaluationPeriods(cloudPeriods);
-      }
+      const { children: cloudChildren, goals: cloudGoals, evaluationPeriods: cloudPeriods, ...extras } = data ?? {};
+      setCloudExtras(extras);
+      setChildren(Array.isArray(cloudChildren) ? cloudChildren : []);
+      setGoals(Array.isArray(cloudGoals) ? cloudGoals : []);
+      if (Array.isArray(cloudPeriods) && cloudPeriods.length) setEvaluationPeriods(cloudPeriods);
       setCloudReady(true);
     }).catch((error) => {
       console.error("Không thể tải dữ liệu từ Google Sheet:", error);
-      if (active) setCloudReady(true);
+      if (active) setCloudReady(false);
     });
     return () => { active = false; };
   }, []);
