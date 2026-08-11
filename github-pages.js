@@ -21,8 +21,9 @@
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: loaded?.evaluationPeriods || defaults.evaluationPeriods, children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
   weekLabels = state.evaluationPeriods;
-  const shareChildId = (() => { const value = new URLSearchParams(window.location.search).get('share'); const match = value?.match(/^(?:child-)?(\d+)$/); return match ? Number(match[1]) : null; })();
-  const shareMode = shareChildId !== null;
+  const childNameSlug = (name) => String(name ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const shareChildSlug = (() => { const value = new URLSearchParams(window.location.search).get('share'); return value?.trim().toLowerCase() || null; })();
+  const shareMode = shareChildSlug !== null;
   let darkMode = localStorage.getItem(themeStorageKey) === 'dark';
   const defaultShortGoals = ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút (có đổi trò chơi).'];
   const defaultLongTerm = 'Duy trì tương tác với giáo viên 5–10 phút';
@@ -49,8 +50,8 @@
   };
   const childById = (id) => state.children.find((child) => child.id === Number(id));
   const selectedChild = () => childById(state.selectedChildId) || state.children[0];
-  const childShareUrl = (childId) => { const url = new URL(window.location.href); url.search = ''; url.hash = ''; url.searchParams.set('share', `child-${childId}`); return url.toString(); };
-  const copyChildShareLink = (childId) => { const child = childById(childId); if (!child) return; const url = childShareUrl(child.id); const fallback = () => window.prompt(`Đường dẫn chia sẻ của ${child.name}`, url); if (!navigator.clipboard?.writeText) { fallback(); return; } navigator.clipboard.writeText(url).then(() => window.alert(`Đã sao chép đường dẫn của ${child.name}.`)).catch(fallback); };
+  const childShareUrl = (childName) => { const url = new URL(window.location.href); url.search = ''; url.hash = ''; url.searchParams.set('share', childNameSlug(childName)); return url.toString(); };
+  const copyChildShareLink = (childId) => { const child = childById(childId); if (!child) return; const url = childShareUrl(child.name); const fallback = () => window.prompt(`Đường dẫn chia sẻ của ${child.name}`, url); if (!navigator.clipboard?.writeText) { fallback(); return; } navigator.clipboard.writeText(url).then(() => window.alert(`Đã sao chép đường dẫn của ${child.name}.`)).catch(fallback); };
   function applyTheme() {
     document.documentElement.classList.toggle('dark-mode', darkMode);
     localStorage.setItem(themeStorageKey, darkMode ? 'dark' : 'light');
@@ -115,7 +116,7 @@
 
   function renderSharePage() {
     const main = $('.main-content');
-    const child = childById(shareChildId);
+    const child = state.children.find((item) => childNameSlug(item.name) === shareChildSlug);
     if (!child) { main.innerHTML = `<div class="share-page"><div class="share-loading"><strong>Không tìm thấy hồ sơ</strong><span>Đường dẫn có thể đã hết hiệu lực hoặc hồ sơ không tồn tại.</span></div></div>`; return; }
     const goals = state.goals.filter((goal) => goal.childId === child.id);
     const achieved = goals.reduce((total, goal) => total + (goal.statuses || []).filter((status) => status === 'Đạt').length, 0);

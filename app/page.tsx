@@ -133,16 +133,27 @@ function ChildAvatar({ name, large = false }: { name: string; large?: boolean })
   return <div className={`child-avatar ${large ? "large" : ""}`} aria-label={`Ảnh của ${name}`}><span>{name.split(" ").map((part) => part[0]).slice(-2).join("")}</span></div>;
 }
 
-function childShareUrl(childId: number) {
+function childNameSlug(name: string) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function childShareUrl(child: Child) {
   const url = new URL(window.location.href);
   url.search = "";
   url.hash = "";
-  url.searchParams.set("share", `child-${childId}`);
+  url.searchParams.set("share", childNameSlug(child.name));
   return url.toString();
 }
 
 function copyChildShareLink(child: Child) {
-  const url = childShareUrl(child.id);
+  const url = childShareUrl(child);
   const fallback = () => window.prompt(`Đường dẫn chia sẻ của ${child.name}`, url);
   if (!navigator.clipboard?.writeText) {
     fallback();
@@ -151,11 +162,10 @@ function copyChildShareLink(child: Child) {
   void navigator.clipboard.writeText(url).then(() => window.alert(`Đã sao chép đường dẫn của ${child.name}.`)).catch(fallback);
 }
 
-function sharedChildIdFromUrl() {
+function sharedChildSlugFromUrl() {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("share");
-  const match = value?.match(/^(?:child-)?(\d+)$/);
-  return match ? Number(match[1]) : null;
+  return value?.trim().toLowerCase() || null;
 }
 
 function ChildSummary({ child }: { child: Child }) {
@@ -419,7 +429,7 @@ function SettingsView({ darkMode, onToggleTheme }: { darkMode: boolean; onToggle
 
 export default function Home() {
   const [view, setView] = useState<View>("plan");
-  const [shareChildId] = useState<number | null>(() => sharedChildIdFromUrl());
+  const [shareChildSlug] = useState<string | null>(() => sharedChildSlugFromUrl());
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -452,13 +462,13 @@ export default function Home() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    if (!cloudReady || shareChildId !== null) return;
+    if (!cloudReady || shareChildSlug !== null) return;
     if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current);
     cloudSaveTimer.current = window.setTimeout(() => {
       saveCloudData({ ...cloudExtras, children, goals, evaluationPeriods }).catch((error) => console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error));
     }, 250);
     return () => { if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current); };
-  }, [children, goals, evaluationPeriods, cloudExtras, cloudReady, shareChildId]);
+  }, [children, goals, evaluationPeriods, cloudExtras, cloudReady, shareChildSlug]);
 
   const updateStatus = (id: number, periodIndex: number, status: Status) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, statuses: evaluationPeriods.map((_, index) => index === periodIndex ? status : goal.statuses[index] ?? "Chưa đạt") } : goal));
   const saveChild = (data: Omit<Child, "id">) => { if (editingChild) setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item)); else setChildren((items) => [...items, { ...data, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setShowChildForm(false); setEditingChild(undefined); };
@@ -489,8 +499,8 @@ export default function Home() {
   const currentChildGoals = goals.filter((goal) => goal.childId === selectedChildId);
   const currentView = useMemo(() => view, [view]);
   const noteGoal = goals.find((goal) => goal.id === noteGoalId);
-  if (shareChildId !== null) {
-    const sharedChild = children.find((child) => child.id === shareChildId);
+  if (shareChildSlug !== null) {
+    const sharedChild = children.find((child) => childNameSlug(child.name) === shareChildSlug);
     if (!cloudReady && !cloudError) return <div className="share-page"><div className="share-loading">Đang tải hồ sơ được chia sẻ…</div></div>;
     if (!sharedChild) return <div className="share-page"><div className="share-loading"><strong>Không tìm thấy hồ sơ</strong><span>Đường dẫn có thể đã hết hiệu lực hoặc hồ sơ không tồn tại.</span></div></div>;
     return <ShareView child={sharedChild} goals={goals.filter((goal) => goal.childId === sharedChild.id)} evaluationPeriods={evaluationPeriods} />;
