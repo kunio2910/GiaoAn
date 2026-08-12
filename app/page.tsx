@@ -73,6 +73,7 @@ type AppCloudData = CloudData & {
 const WEEK_LABELS = ["Tuần 1 - 2", "Tuần 3 - 4", "Tuần 5 - 6", "Tuần 7 - 8"];
 const STATUS_OPTIONS: Status[] = ["Đạt", "Manh nha", "Chưa đạt"];
 const DOMAIN_OPTIONS = ["Tương tác xã hội", "Chú ý chung", "Giao tiếp", "Kỹ năng tự phục vụ"];
+const PLAN_NEW_HIDDEN_DOMAINS_STORAGE_KEY = "giaoan-plan-new-hidden-domains";
 const DOMAIN_ICON_OPTIONS: { value: DomainIcon; label: string; tone: string }[] = [
   { value: "group", label: "Cùng nhau", tone: "violet" },
   { value: "target", label: "Mục tiêu", tone: "blue" },
@@ -566,20 +567,21 @@ function PlanNewDomainCard({ domain, childId, goals, periods, domainIcon, isOpen
   </article>;
 }
 
-function PlanNewView({ childList, selectedChildId, onSelectChild, goals, domains, evaluationPeriods, domainIcons, onAddDomain, onAddLong, onAddShort, onAddPeriod, onEditDomain, onEditLong, onDeleteGoal, onEditShort, onDeleteShort, onEditPeriod, onDeleteDomain, onStatusChange }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; domains: string[]; evaluationPeriods: string[]; domainIcons: Record<string, DomainIcon>; onAddDomain: () => void; onAddLong: (domain?: string) => void; onAddShort: (goal: Goal) => void; onAddPeriod: () => void; onEditDomain: (goal: Goal) => void; onEditLong: (goal: Goal) => void; onDeleteGoal: (goal: Goal) => void; onEditShort: (goal: Goal, index: number) => void; onDeleteShort: (goal: Goal, index: number) => void; onEditPeriod: (goal: Goal, index: number) => void; onDeleteDomain: (domain: string) => void; onStatusChange: (id: number, periodIndex: number, status: Status) => void }) {
+function PlanNewView({ childList, selectedChildId, onSelectChild, goals, domains, hiddenDomains, evaluationPeriods, domainIcons, onAddDomain, onAddLong, onAddShort, onAddPeriod, onEditDomain, onEditLong, onDeleteGoal, onEditShort, onDeleteShort, onEditPeriod, onDeleteDomain, onStatusChange }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; domains: string[]; hiddenDomains: string[]; evaluationPeriods: string[]; domainIcons: Record<string, DomainIcon>; onAddDomain: () => void; onAddLong: (domain?: string) => void; onAddShort: (goal: Goal) => void; onAddPeriod: () => void; onEditDomain: (goal: Goal) => void; onEditLong: (goal: Goal) => void; onDeleteGoal: (goal: Goal) => void; onEditShort: (goal: Goal, index: number) => void; onDeleteShort: (goal: Goal, index: number) => void; onEditPeriod: (goal: Goal, index: number) => void; onDeleteDomain: (domain: string) => void; onStatusChange: (id: number, periodIndex: number, status: Status) => void }) {
   const child = childList.find((item) => item.id === selectedChildId) ?? childList[0];
   const childGoals = child ? goals.filter((goal) => goal.childId === child.id) : [];
   const [search, setSearch] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
   const [openDomains, setOpenDomains] = useState<Record<string, boolean>>({});
-  const domainNames = useMemo(() => [...new Set([...domains, ...childGoals.map((goal) => goal.domain)])], [domains, childGoals]);
+  const visibleChildGoals = useMemo(() => childGoals.filter((goal) => !hiddenDomains.includes(goal.domain)), [childGoals, hiddenDomains]);
+  const domainNames = useMemo(() => [...new Set([...domains, ...visibleChildGoals.map((goal) => goal.domain)])].filter((domain) => !hiddenDomains.includes(domain)), [domains, visibleChildGoals, hiddenDomains]);
   const domainKey = domainNames.join("|");
   useEffect(() => {
     setOpenDomains((current) => domainNames.reduce<Record<string, boolean>>((result, domain, index) => { result[domain] = current[domain] ?? index === 0; return result; }, {}));
   }, [domainKey]);
   const visibleDomainNames = domainNames.filter((domain) => {
     const matchesFilter = !domainFilter || domain === domainFilter;
-    const domainGoals = childGoals.filter((goal) => goal.domain === domain);
+    const domainGoals = visibleChildGoals.filter((goal) => goal.domain === domain);
     const matchesSearch = !search.trim() || `${domain} ${domainGoals.map((goal) => `${goal.longTerm} ${goal.shortTerm.join(" ")}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase());
     return matchesFilter && matchesSearch;
   });
@@ -588,16 +590,16 @@ function PlanNewView({ childList, selectedChildId, onSelectChild, goals, domains
     <Header title="Kế hoạch giáo dục" subtitle="Bố cục mới · mục tiêu được tách riêng theo từng trẻ" actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} />
     <section className="plan-new-child-switcher" aria-label="Chọn hồ sơ trẻ">
       <div><span>Đang xem hồ sơ của</span><ChildChoiceButtons label="Chọn trẻ" childList={childList} selectedChildId={selectedChildId} onSelectChild={onSelectChild} /></div>
-      <div className="plan-new-following-count"><strong>{childGoals.length}</strong><span>mục tiêu đang theo dõi</span></div>
+      <div className="plan-new-following-count"><strong>{visibleChildGoals.length}</strong><span>mục tiêu đang theo dõi</span></div>
     </section>
     <ChildSummary child={child} />
     <div className="plan-new-section-title"><div><h2><Icon name="calendar" size={21} />MỤC TIÊU PHÁT TRIỂN</h2><p>Thiết lập và theo dõi mục tiêu riêng cho {child.name}.</p></div><div className="mini-legend"><span><i className="green-dot" />Đạt (Đ)</span><span><i className="yellow-dot" />Manh nha (MN)</span><span><i className="gray-dot" />Chưa đạt (CĐ)</span></div></div>
     <section className="plan-new-board">
       <div className="plan-new-toolbar"><div className="plan-new-search"><Icon name="overview" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm lĩnh vực, mục tiêu" /></div><select value={domainFilter} onChange={(event) => setDomainFilter(event.target.value)} aria-label="Lọc theo lĩnh vực"><option value="">Tất cả lĩnh vực</option>{domainNames.map((domain) => <option key={domain} value={domain}>{domain}</option>)}</select><span className="plan-new-toolbar-count"><strong>{visibleDomainNames.length}</strong> lĩnh vực</span><button className="button primary" type="button" onClick={onAddDomain}><Icon name="plus" size={17} />Thêm lĩnh vực</button></div>
       <div className="plan-new-board-actions"><button className="outline-button compact" type="button" onClick={() => setOpenDomains(Object.fromEntries(domainNames.map((domain) => [domain, false])))}><Icon name="chevron" size={15} />Thu gọn tất cả</button><button className="outline-button compact" type="button" onClick={() => setOpenDomains(Object.fromEntries(domainNames.map((domain) => [domain, true])))}><Icon name="chevron" size={15} />Mở tất cả</button></div>
-      <div className="plan-new-domain-list">{visibleDomainNames.map((domain) => <PlanNewDomainCard key={domain} domain={domain} childId={child.id} goals={childGoals.filter((goal) => goal.domain === domain)} periods={evaluationPeriods} domainIcon={domainIcons[domain] ?? DEFAULT_DOMAIN_ICONS[domain] ?? DOMAIN_ICON_OPTIONS[0].value} isOpen={openDomains[domain] ?? false} search={search} onToggle={() => setOpenDomains((current) => ({ ...current, [domain]: !(current[domain] ?? false) }))} onAddLong={onAddLong} onAddShort={onAddShort} onAddPeriod={onAddPeriod} onEditDomain={onEditDomain} onEditLong={onEditLong} onDeleteGoal={onDeleteGoal} onEditShort={onEditShort} onDeleteShort={onDeleteShort} onEditPeriod={onEditPeriod} onDeleteDomain={onDeleteDomain} onStatusChange={onStatusChange} />)}</div>
+      <div className="plan-new-domain-list">{visibleDomainNames.map((domain) => <PlanNewDomainCard key={domain} domain={domain} childId={child.id} goals={visibleChildGoals.filter((goal) => goal.domain === domain)} periods={evaluationPeriods} domainIcon={domainIcons[domain] ?? DEFAULT_DOMAIN_ICONS[domain] ?? DOMAIN_ICON_OPTIONS[0].value} isOpen={openDomains[domain] ?? false} search={search} onToggle={() => setOpenDomains((current) => ({ ...current, [domain]: !(current[domain] ?? false) }))} onAddLong={onAddLong} onAddShort={onAddShort} onAddPeriod={onAddPeriod} onEditDomain={onEditDomain} onEditLong={onEditLong} onDeleteGoal={onDeleteGoal} onEditShort={onEditShort} onDeleteShort={onDeleteShort} onEditPeriod={onEditPeriod} onDeleteDomain={onDeleteDomain} onStatusChange={onStatusChange} />)}</div>
       {!visibleDomainNames.length && <div className="plan-new-no-results"><Icon name="target" size={29} /><strong>Không tìm thấy lĩnh vực hoặc mục tiêu</strong><span>Thử từ khóa khác hoặc xóa bộ lọc để xem lại toàn bộ dữ liệu.</span></div>}
-      <footer className="plan-new-footer"><span>Hiển thị {visibleDomainNames.length} lĩnh vực · {childGoals.length} mục tiêu dài hạn</span><span>Gợi ý: mở từng lĩnh vực để thao tác nhanh, tránh màn hình quá dày.</span></footer>
+      <footer className="plan-new-footer"><span>Hiển thị {visibleDomainNames.length} lĩnh vực · {visibleChildGoals.length} mục tiêu dài hạn</span><span>Gợi ý: mở từng lĩnh vực để thao tác nhanh, tránh màn hình quá dày.</span></footer>
     </section>
   </div>;
 }
@@ -706,14 +708,28 @@ export default function Home() {
   const [evaluationPeriodsByChild, setEvaluationPeriodsByChild] = useState<Record<string, string[]>>({});
   const [domains, setDomains] = useState<string[]>(DOMAIN_OPTIONS);
   const [domainIcons, setDomainIcons] = useState<Record<string, DomainIcon>>(DEFAULT_DOMAIN_ICONS);
+  const [planNewHiddenDomainsByChild, setPlanNewHiddenDomainsByChild] = useState<Record<string, string[]>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(PLAN_NEW_HIDDEN_DOMAINS_STORAGE_KEY) || "{}");
+      if (!parsed || typeof parsed !== "object") return {};
+      return Object.fromEntries(Object.entries(parsed).map(([childId, values]) => [childId, Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : []]));
+    } catch {
+      return {};
+    }
+  });
   const [collapsedGoalIds, setCollapsedGoalIds] = useState<number[]>([]);
   const [selectedChildId, setSelectedChildId] = useState(0);
+  const planNewHiddenDomains = planNewHiddenDomainsByChild[String(selectedChildId)] ?? [];
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
   const [goalDialog, setGoalDialog] = useState<GoalDialogState | null>(null);
   const [noteGoalId, setNoteGoalId] = useState<number | null>(null);
   const [cloudReady, setCloudReady] = useState(false);
   const [cloudError, setCloudError] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem(PLAN_NEW_HIDDEN_DOMAINS_STORAGE_KEY, JSON.stringify(planNewHiddenDomainsByChild));
+  }, [planNewHiddenDomainsByChild]);
   const [cloudExtras, setCloudExtras] = useState<Record<string, unknown>>({});
   const cloudSaveTimer = useRef<number | null>(null);
   const periodsForChild = (childId: number) => normalizeEvaluationPeriods(evaluationPeriodsByChild[String(childId)], legacyEvaluationPeriods);
@@ -796,8 +812,22 @@ export default function Home() {
     setDomainIcons((items) => { const next = { ...items }; delete next[domain]; return next; });
     setGoals((items) => items.filter((goal) => goal.domain !== domain));
   };
+  const hideDomainInPlanNew = (domain: string) => {
+    if (!window.confirm(`Ẩn lĩnh vực “${domain}” khỏi Kế hoạch giáo dục new? Dữ liệu vẫn được giữ trong Cài đặt và Tổng quan.`)) return;
+    setPlanNewHiddenDomainsByChild((items) => {
+      const childKey = String(selectedChildId);
+      const current = items[childKey] ?? [];
+      return current.includes(domain) ? items : { ...items, [childKey]: [...current, domain] };
+    });
+  };
   const saveGoalDialog = ({ mode, text, domain, goalId, periodLabel, periodLabels, domainIcon, shortTerm, statuses, note }: GoalDialogSave) => {
     if (mode === "domain") {
+      setPlanNewHiddenDomainsByChild((items) => {
+        const childKey = String(selectedChildId);
+        const current = items[childKey] ?? [];
+        if (!current.includes(domain)) return items;
+        return { ...items, [childKey]: current.filter((item) => item !== domain) };
+      });
       setEvaluationPeriodsByChild((items) => items[String(selectedChildId)] ? items : { ...items, [String(selectedChildId)]: [...currentEvaluationPeriods] });
       setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain, longTerm: "", shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: currentEvaluationPeriods.map(() => "Chưa đạt") }]);
     } else if (mode === "edit-domain-setting") {
@@ -822,7 +852,7 @@ export default function Home() {
       const normalizedKeySet = new Set(normalizedLabels.map((label) => label.toLocaleLowerCase()));
       if (!normalizedLabels.length || normalizedLabels.some((label) => !label) || normalizedKeySet.size !== normalizedLabels.length) { window.alert("Tên thời gian theo tuần phải đầy đủ và không được trùng nhau."); return; }
       setGoals((items) => items.map((goal) => {
-        const isTargetGoal = currentGoal ? goal.id === currentGoal.id : goal.childId === selectedChildId && goal.domain === previousDomain;
+        const isTargetGoal = goal.childId === childId && goal.domain === previousDomain;
         if (!isTargetGoal) return goal;
         return { ...goal, domain, longTerm: text, shortTerm: shortTerm ?? goal.shortTerm, statuses: normalizedLabels.map((_, index) => statuses?.[index] ?? goal.statuses[index] ?? "Chưa đạt"), note };
       }));
@@ -868,7 +898,7 @@ export default function Home() {
     return <ShareView child={sharedChild} goals={goals.filter((goal) => goal.childId === sharedChild.id)} evaluationPeriods={evaluationPeriods} domainIcons={domainIcons} />;
   }
   if (view === "plan-new") {
-    return <div className="app-shell"><SidebarV2 active={currentView} onChange={navigate} /><main className="main-content"><PlanNewView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} domains={domains} evaluationPeriods={evaluationPeriods} domainIcons={domainIcons} onAddDomain={() => openGoalDialog({ mode: "domain" })} onAddLong={(domain) => openGoalDialog({ mode: "long", initialDomain: domain ?? currentChildGoals[0]?.domain })} onAddShort={(goal) => openGoalDialog({ mode: "short", initialGoalId: goal.id })} onAddPeriod={() => openGoalDialog({ mode: "period" })} onEditDomain={(goal) => openGoalDialog({ mode: "edit-domain", goalId: goal.id, editingGoal: goal, initialDomain: goal.domain, initialIcon: domainIcons[goal.domain] })} onEditLong={(goal) => openGoalDialog({ mode: "edit-long", goalId: goal.id, initialValue: goal.longTerm })} onDeleteGoal={deleteGoal} onEditShort={(goal, index) => openGoalDialog({ mode: "edit-short", goalId: goal.id, shortIndex: index, initialValue: goal.shortTerm[index] })} onDeleteShort={deleteShort} onEditPeriod={(goal, index) => openGoalDialog({ mode: "edit-period", goalId: goal.id, periodIndex: index, initialValue: goal.statuses[index], initialPeriodLabel: evaluationPeriods[index] })} onDeleteDomain={deleteDomain} onStatusChange={updateStatus} /></main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}{goalDialog && <GoalDialog mode={goalDialog.mode} goals={currentChildGoals} domains={domains} evaluationPeriods={evaluationPeriods} editingGoal={goalDialog.editingGoal} initialValue={goalDialog.initialValue} initialGoalId={goalDialog.goalId} initialDomain={goalDialog.initialDomain ?? currentChildGoals[0]?.domain} initialPeriodLabel={goalDialog.initialPeriodLabel} initialIcon={goalDialog.initialIcon} onCancel={() => setGoalDialog(null)} onSave={saveGoalDialog} />}{noteGoalId !== null && <NoteDialog goal={noteGoal} onCancel={() => setNoteGoalId(null)} onSave={saveNote} />}</div>;
+    return <div className="app-shell"><SidebarV2 active={currentView} onChange={navigate} /><main className="main-content"><PlanNewView childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} domains={domains} hiddenDomains={planNewHiddenDomains} evaluationPeriods={evaluationPeriods} domainIcons={domainIcons} onAddDomain={() => openGoalDialog({ mode: "domain" })} onAddLong={(domain) => openGoalDialog({ mode: "long", initialDomain: domain ?? currentChildGoals[0]?.domain })} onAddShort={(goal) => openGoalDialog({ mode: "short", initialGoalId: goal.id })} onAddPeriod={() => openGoalDialog({ mode: "period" })} onEditDomain={(goal) => openGoalDialog({ mode: "edit-domain", goalId: goal.id, editingGoal: goal, initialDomain: goal.domain, initialIcon: domainIcons[goal.domain] })} onEditLong={(goal) => openGoalDialog({ mode: "edit-long", goalId: goal.id, initialValue: goal.longTerm })} onDeleteGoal={deleteGoal} onEditShort={(goal, index) => openGoalDialog({ mode: "edit-short", goalId: goal.id, shortIndex: index, initialValue: goal.shortTerm[index] })} onDeleteShort={deleteShort} onEditPeriod={(goal, index) => openGoalDialog({ mode: "edit-period", goalId: goal.id, periodIndex: index, initialValue: goal.statuses[index], initialPeriodLabel: evaluationPeriods[index] })} onDeleteDomain={hideDomainInPlanNew} onStatusChange={updateStatus} /></main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}{goalDialog && <GoalDialog mode={goalDialog.mode} goals={currentChildGoals} domains={domains} evaluationPeriods={evaluationPeriods} editingGoal={goalDialog.editingGoal} initialValue={goalDialog.initialValue} initialGoalId={goalDialog.goalId} initialDomain={goalDialog.initialDomain ?? currentChildGoals[0]?.domain} initialPeriodLabel={goalDialog.initialPeriodLabel} initialIcon={goalDialog.initialIcon} onCancel={() => setGoalDialog(null)} onSave={saveGoalDialog} />}{noteGoalId !== null && <NoteDialog goal={noteGoal} onCancel={() => setNoteGoalId(null)} onSave={saveNote} />}</div>;
   }
   return <div className="app-shell"><SidebarV2 active={currentView} onChange={navigate} /><main className="main-content">{view === "overview" && <OverviewViewV2 childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} evaluationPeriods={evaluationPeriods} domainIcons={domainIcons} onOpenPlan={() => setView("plan")} />}{view === "plan" && <PlanViewV2 childList={children} selectedChildId={selectedChildId} onSelectChild={setSelectedChildId} goals={goals} evaluationPeriods={evaluationPeriods} domainIcons={domainIcons} collapsedGoalIds={collapsedGoalIds} onToggleCollapse={toggleCollapse} onStatusChange={updateStatus} onNoteClick={setNoteGoalId} onAddDomain={() => openGoalDialog({ mode: "domain" })} onAddLong={() => openGoalDialog({ mode: "long", initialDomain: currentChildGoals[0]?.domain })} onAddShort={(goal) => { const targetGoal = goal ?? currentChildGoals[0]; if (!targetGoal) { window.alert("Hãy thêm mục tiêu dài hạn trước."); return; } openGoalDialog({ mode: "short", initialGoalId: targetGoal.id }); }} onAddPeriod={() => openGoalDialog({ mode: "period" })} onEditDomain={(goal) => openGoalDialog({ mode: "edit-domain", goalId: goal.id, editingGoal: goal, initialDomain: goal.domain, initialIcon: domainIcons[goal.domain] })} onEditLong={(goal) => openGoalDialog({ mode: "edit-long", goalId: goal.id, initialValue: goal.longTerm })} onDeleteGoal={deleteGoal} onEditShort={(goal, index) => openGoalDialog({ mode: "edit-short", goalId: goal.id, shortIndex: index, initialValue: goal.shortTerm[index] })} onDeleteShort={deleteShort} onEditPeriod={(goal, index) => openGoalDialog({ mode: "edit-period", goalId: goal.id, periodIndex: index, initialValue: goal.statuses[index], initialPeriodLabel: evaluationPeriods[index] })} />}{view === "children" && <ChildrenView childList={children} onAdd={() => { setEditingChild(undefined); setShowChildForm(true); }} onEdit={(child) => { setEditingChild(child); setShowChildForm(true); }} onDelete={deleteChild} onSelectPlan={(id) => { setSelectedChildId(id); setView("plan"); }} />}{view === "objective-form" && <ObjectiveForm childList={children} onCancel={() => setView("plan")} onSaved={saveGoal} />}{view === "settings" && <SettingsView darkMode={darkMode} onToggleTheme={() => setDarkMode((value) => !value)} domains={domains} domainIcons={domainIcons} onAddDomain={addDomain} onEditDomain={editDomainSetting} onDeleteDomain={deleteDomain} />}</main>{showChildForm && <ChildForm child={editingChild} onCancel={() => { setShowChildForm(false); setEditingChild(undefined); }} onSave={saveChild} />}{goalDialog && <GoalDialog mode={goalDialog.mode} goals={currentChildGoals} domains={domains} evaluationPeriods={evaluationPeriods} editingGoal={goalDialog.editingGoal} initialValue={goalDialog.initialValue} initialGoalId={goalDialog.goalId} initialDomain={goalDialog.initialDomain ?? currentChildGoals[0]?.domain} initialPeriodLabel={goalDialog.initialPeriodLabel} initialIcon={goalDialog.initialIcon} onCancel={() => setGoalDialog(null)} onSave={saveGoalDialog} />}{noteGoalId !== null && <NoteDialog goal={noteGoal} onCancel={() => setNoteGoalId(null)} onSave={saveNote} />}</div>;
 }

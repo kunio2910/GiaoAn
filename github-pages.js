@@ -62,6 +62,10 @@
   let planNewSearch = '';
   let planNewFilter = '';
   let planNewPendingDomain = '';
+  const planNewHiddenDomainsStorageKey = 'giaoan-plan-new-hidden-domains';
+  let planNewHiddenDomainsByChild = (() => { try { const parsed = JSON.parse(localStorage.getItem(planNewHiddenDomainsStorageKey) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; } })();
+  const hiddenPlanNewDomainsForChild = (childId) => Array.isArray(planNewHiddenDomainsByChild[String(childId)]) ? planNewHiddenDomainsByChild[String(childId)] : [];
+  const persistPlanNewHiddenDomains = () => localStorage.setItem(planNewHiddenDomainsStorageKey, JSON.stringify(planNewHiddenDomainsByChild));
   const periodsForChild = (childId) => normalizePeriods(state.evaluationPeriodsByChild?.[String(childId)], state.evaluationPeriods || weekLabels);
   const setPeriodsForChild = (childId, periods) => {
     const nextPeriods = normalizePeriods(periods);
@@ -287,8 +291,10 @@
     const child = selectedChild();
     if (!child) { screen.innerHTML = `<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const childGoals = state.goals.filter((goal) => goal.childId === child.id);
+    const hiddenDomains = hiddenPlanNewDomainsForChild(child.id);
+    const visibleChildGoals = childGoals.filter((goal) => !hiddenDomains.includes(goal.domain));
     const periodLabels = periodsForChild(child.id);
-    const allDomains = [...new Set([...(state.domains || domains), ...childGoals.map((goal) => goal.domain)])];
+    const allDomains = [...new Set([...(state.domains || domains), ...childGoals.map((goal) => goal.domain)])].filter((domain) => !hiddenDomains.includes(domain));
     const query = planNewSearch.trim().toLowerCase();
     const visibleDomains = allDomains.filter((domain) => {
       if (planNewFilter && planNewFilter !== domain) return false;
@@ -309,7 +315,7 @@
       const empty = `<div class="plan-new-empty">${icon('target')}<div><strong>${query ? 'Không tìm thấy mục tiêu phù hợp' : 'Chưa có mục tiêu dài hạn'}</strong><span>${query ? 'Thử từ khóa khác hoặc xóa bộ lọc.' : 'Bắt đầu bằng cách thêm mục tiêu dài hạn cho lĩnh vực này.'}</span></div></div>`;
       return `<article class="plan-new-domain ${open ? 'is-open' : 'is-collapsed'}"><header class="plan-new-domain-head"><div class="plan-new-domain-title">${domainIconBadge(state.domainIcons?.[domain] || defaultDomainIcons[domain])}<div><span class="plan-new-eyebrow">Lĩnh vực</span><h3>${esc(domain)}</h3><p>${childGoals.filter((goal) => goal.domain === domain).length} mục tiêu dài hạn <span>·</span> ${childGoals.filter((goal) => goal.domain === domain).length * periodLabels.length} kết quả theo tuần</p></div></div><div class="plan-new-domain-actions"><button class="plan-new-icon-action" type="button" data-action="edit-domain" data-goal-id="${targetGoal?.id || 0}" aria-label="Sửa lĩnh vực ${esc(domain)}">${icon('edit')}</button><button class="plan-new-icon-action danger" type="button" data-action="delete-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Xóa lĩnh vực ${esc(domain)}">${icon('trash')}</button><button class="plan-new-toggle" type="button" data-action="toggle-new-domain" data-new-domain="${esc(domain)}" aria-expanded="${open}" aria-label="${open ? 'Thu gọn' : 'Mở rộng'} lĩnh vực ${esc(domain)}">${icon('chevron')}</button></div></header>${open ? `<div class="plan-new-domain-body">${goalCards || empty}<div class="plan-new-domain-footer"><span>${childGoals.filter((goal) => goal.domain === domain).length} mục tiêu dài hạn</span><button class="plan-new-primary-small" type="button" data-action="add-long" data-plan-new-domain="${esc(domain)}">${icon('plus')}Thêm mục tiêu dài hạn</button></div></div>` : ''}</article>`;
     }).join('');
-    screen.innerHTML = `${header('Kế hoạch giáo dục', 'Bố cục mới · mục tiêu được tách riêng theo từng trẻ', actions)}<section class="plan-new-child-switcher"><div><span>Đang xem hồ sơ của</span>${childChoiceButtons('Chọn trẻ', 'plan-new')}</div><div class="plan-new-following-count"><strong>${childGoals.length}</strong><span>mục tiêu đang theo dõi</span></div></section>${childSummaryMarkup(child)}<div class="plan-new-section-title"><div><h2>${icon('calendar')}MỤC TIÊU PHÁT TRIỂN</h2><p>Thiết lập và theo dõi mục tiêu riêng cho ${esc(child.name)}.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt (Đ)</span><span><i class="dot yellow"></i>Manh nha (MN)</span><span><i class="dot gray"></i>Chưa đạt (CĐ)</span></div></div><section class="plan-new-board"><div class="plan-new-toolbar"><div class="plan-new-search">${icon('overview')}<input type="search" data-plan-new-search value="${esc(planNewSearch)}" placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm lĩnh vực, mục tiêu" /></div><select data-plan-new-domain-filter aria-label="Lọc theo lĩnh vực"><option value="">Tất cả lĩnh vực</option>${allDomains.map((domain) => `<option value="${esc(domain)}" ${domain === planNewFilter ? 'selected' : ''}>${esc(domain)}</option>`).join('')}</select><span class="plan-new-toolbar-count"><strong>${visibleDomains.length}</strong> lĩnh vực</span><button class="button primary" type="button" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button></div><div class="plan-new-board-actions"><button class="outline-button compact" type="button" data-action="collapse-new-domains">${icon('chevron')}Thu gọn tất cả</button><button class="outline-button compact" type="button" data-action="expand-new-domains">${icon('chevron')}Mở tất cả</button></div><div class="plan-new-domain-list">${domainCards || `<div class="plan-new-no-results">${icon('target')}<strong>Không tìm thấy lĩnh vực hoặc mục tiêu</strong><span>Thử từ khóa khác hoặc xóa bộ lọc để xem lại toàn bộ dữ liệu.</span></div>`}</div><footer class="plan-new-footer"><span>Hiển thị ${visibleDomains.length} lĩnh vực · ${childGoals.length} mục tiêu dài hạn</span><span>Gợi ý: mở từng lĩnh vực để thao tác nhanh, tránh màn hình quá dày.</span></footer></section>`;
+    screen.innerHTML = `${header('Kế hoạch giáo dục', 'Bố cục mới · mục tiêu được tách riêng theo từng trẻ', actions)}<section class="plan-new-child-switcher"><div><span>Đang xem hồ sơ của</span>${childChoiceButtons('Chọn trẻ', 'plan-new')}</div><div class="plan-new-following-count"><strong>${visibleChildGoals.length}</strong><span>mục tiêu đang theo dõi</span></div></section>${childSummaryMarkup(child)}<div class="plan-new-section-title"><div><h2>${icon('calendar')}MỤC TIÊU PHÁT TRIỂN</h2><p>Thiết lập và theo dõi mục tiêu riêng cho ${esc(child.name)}.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt (Đ)</span><span><i class="dot yellow"></i>Manh nha (MN)</span><span><i class="dot gray"></i>Chưa đạt (CĐ)</span></div></div><section class="plan-new-board"><div class="plan-new-toolbar"><div class="plan-new-search">${icon('overview')}<input type="search" data-plan-new-search value="${esc(planNewSearch)}" placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm lĩnh vực, mục tiêu" /></div><select data-plan-new-domain-filter aria-label="Lọc theo lĩnh vực"><option value="">Tất cả lĩnh vực</option>${allDomains.map((domain) => `<option value="${esc(domain)}" ${domain === planNewFilter ? 'selected' : ''}>${esc(domain)}</option>`).join('')}</select><span class="plan-new-toolbar-count"><strong>${visibleDomains.length}</strong> lĩnh vực</span><button class="button primary" type="button" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button></div><div class="plan-new-board-actions"><button class="outline-button compact" type="button" data-action="collapse-new-domains">${icon('chevron')}Thu gọn tất cả</button><button class="outline-button compact" type="button" data-action="expand-new-domains">${icon('chevron')}Mở tất cả</button></div><div class="plan-new-domain-list">${domainCards || `<div class="plan-new-no-results">${icon('target')}<strong>Không tìm thấy lĩnh vực hoặc mục tiêu</strong><span>Thử từ khóa khác hoặc xóa bộ lọc để xem lại toàn bộ dữ liệu.</span></div>`}</div><footer class="plan-new-footer"><span>Hiển thị ${visibleDomains.length} lĩnh vực · ${visibleChildGoals.length} mục tiêu dài hạn</span><span>Gợi ý: mở từng lĩnh vực để thao tác nhanh, tránh màn hình quá dày.</span></footer></section>`;
   }
 
   function renderPlanLegacy() {
@@ -507,6 +513,22 @@
   function closeGoalModal() { $('#goal-modal').classList.remove('small-edit-modal', 'domain-edit-modal'); $('#goal-modal').setAttribute('hidden', ''); }
 
   document.addEventListener('click', (event) => {
+    const action = event.target.closest('[data-action="delete-domain-setting"]');
+    if (!action || state.view !== 'plan-new') return;
+    const domainName = action.dataset.domainSettingName;
+    const child = selectedChild();
+    const childKey = String(child?.id || state.selectedChildId);
+    const hiddenDomains = hiddenPlanNewDomainsForChild(childKey);
+    if (window.confirm('Ẩn lĩnh vực này khỏi Kế hoạch giáo dục new? Dữ liệu vẫn được giữ trong Cài đặt và Tổng quan.')) {
+      if (!hiddenDomains.includes(domainName)) planNewHiddenDomainsByChild[childKey] = [...hiddenDomains, domainName];
+      persistPlanNewHiddenDomains();
+      if (planNewFilter === domainName) planNewFilter = '';
+      renderPlanNew();
+    }
+    event.stopImmediatePropagation();
+  });
+
+  document.addEventListener('click', (event) => {
     const viewButton = event.target.closest('[data-view]');
     if (viewButton) { if (viewButton.dataset.view === 'objective') { draftShortGoals = [...defaultShortGoals]; draftLongTerm = defaultLongTerm; } navigate(viewButton.dataset.view); return; }
     const calendarCell = event.target.closest('[data-calendar-date]');
@@ -684,6 +706,12 @@
     if (mode === 'domain') {
       state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
       state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
+      const hiddenDomains = hiddenPlanNewDomainsForChild(state.selectedChildId);
+      if (hiddenDomains.includes(selectedDomain)) {
+        const childKey = String(state.selectedChildId);
+        planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== selectedDomain);
+        persistPlanNewHiddenDomains();
+      }
     } else if (mode === 'edit-domain-setting') {
       const previousDomain = $('#goal-dialog-domain-name').dataset.previousDomain || domainName;
       state.domains = state.domains.map((item) => item === previousDomain ? domainName : item);
