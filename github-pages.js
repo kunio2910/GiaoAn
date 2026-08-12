@@ -57,7 +57,7 @@
   const legacyPeriods = normalizePeriods(loaded?.evaluationPeriods || defaults.evaluationPeriods);
   const rawPeriodsByChild = loaded?.evaluationPeriodsByChild && typeof loaded.evaluationPeriodsByChild === 'object' ? loaded.evaluationPeriodsByChild : {};
   const initialPeriodsByChild = Object.fromEntries(initialChildren.map((child) => [String(child.id), normalizePeriods(rawPeriodsByChild[String(child.id)], legacyPeriods)]));
-  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: legacyPeriods, evaluationPeriodsByChild: initialPeriodsByChild, domains: loaded?.domains || defaults.domains, domainIcons: { ...defaultDomainIcons, ...(loaded?.domainIcons || {}) }, collapsedGoalIds: Array.isArray(loaded?.collapsedGoalIds) ? loaded.collapsedGoalIds : [], children: initialChildren, goals: loaded?.goals || defaults.goals, selectedChildId: initialChildren[0]?.id || 0, view: 'plan' };
+  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: legacyPeriods, evaluationPeriodsByChild: initialPeriodsByChild, domains: loaded?.domains || defaults.domains, domainIcons: { ...defaultDomainIcons, ...(loaded?.domainIcons || {}) }, collapsedGoalIds: Array.isArray(loaded?.collapsedGoalIds) ? loaded.collapsedGoalIds : [], children: initialChildren, goals: loaded?.goals || defaults.goals, selectedChildId: initialChildren[0]?.id || 0, view: 'plan-new' };
   let planNewOpenDomains = {};
   let planNewSearch = '';
   let planNewFilter = '';
