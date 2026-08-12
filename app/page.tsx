@@ -5,7 +5,7 @@ import { loadCloudData, saveCloudData, type CloudData } from "./google-sheet-con
 
 type View = "overview" | "plan" | "children" | "settings" | "objective-form";
 type Status = "Đạt" | "Manh nha" | "Chưa đạt";
-type DomainIcon = "target" | "group" | "eye" | "children" | "calendar" | "note" | "overview" | "plan";
+type DomainIcon = "target" | "group" | "eye" | "children" | "calendar" | "note" | "overview" | "plan" | "heart" | "star" | "puzzle" | "music" | "brain" | "hand";
 
 const TEACHING_DAYS = [
   { value: 1, label: "Thứ 2" },
@@ -64,6 +64,7 @@ type AppCloudData = CloudData & {
   children?: Child[];
   goals?: Goal[];
   evaluationPeriods?: string[];
+  evaluationPeriodsByChild?: Record<string, string[]>;
   domains?: string[];
   domainIcons?: Record<string, DomainIcon>;
   collapsedGoalIds?: number[];
@@ -81,6 +82,12 @@ const DOMAIN_ICON_OPTIONS: { value: DomainIcon; label: string; tone: string }[] 
   { value: "note", label: "Giao tiếp", tone: "green" },
   { value: "overview", label: "Khám phá", tone: "indigo" },
   { value: "plan", label: "Học tập", tone: "yellow" },
+  { value: "heart", label: "Cảm xúc", tone: "pink" },
+  { value: "star", label: "Tiến bộ", tone: "yellow" },
+  { value: "puzzle", label: "Kỹ năng", tone: "indigo" },
+  { value: "music", label: "Âm nhạc", tone: "teal" },
+  { value: "brain", label: "Tư duy", tone: "blue" },
+  { value: "hand", label: "Vận động", tone: "orange" },
 ];
 const DEFAULT_DOMAIN_ICONS: Record<string, DomainIcon> = {
   "Tương tác xã hội": "group",
@@ -90,6 +97,19 @@ const DEFAULT_DOMAIN_ICONS: Record<string, DomainIcon> = {
 };
 
 const DEFAULT_EVALUATION_PERIODS = ["Tuần 1 - 2", "Tuần 3 - 4", "Tuần 5 - 6", "Tuần 7 - 8"];
+
+function normalizeEvaluationPeriods(value: unknown, fallback = DEFAULT_EVALUATION_PERIODS) {
+  const periods = Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim()).map((item) => item.trim()) : [];
+  return periods.length ? periods : [...fallback];
+}
+
+function buildEvaluationPeriodsByChild(children: Child[], value: unknown, fallback = DEFAULT_EVALUATION_PERIODS) {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return children.reduce<Record<string, string[]>>((result, child) => {
+    result[String(child.id)] = normalizeEvaluationPeriods(source[String(child.id)], fallback);
+    return result;
+  }, {});
+}
 
 const initialChildren: Child[] = [
   { id: 1, name: "Nguyễn Khánh Linh", birthday: "07/07/2021", gender: "Nữ", note: "Thích hoạt động có âm nhạc." },
@@ -129,7 +149,7 @@ const initialGoals: Goal[] = [
   },
 ];
 
-function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "settings" | "target" | "group" | "eye" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "share" | "moon" | "sun"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "settings" | "target" | "group" | "eye" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "share" | "moon" | "sun" | "heart" | "star" | "puzzle" | "music" | "brain" | "hand"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   const paths: Record<string, React.ReactNode> = {
     overview: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
@@ -152,6 +172,12 @@ function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "s
     share: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4" /></>,
     moon: <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2z" />,
     sun: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" /></>,
+    heart: <path d="M20.8 8.7c0 5.2-8.8 10.1-8.8 10.1S3.2 13.9 3.2 8.7A4.4 4.4 0 0 1 12 6.9a4.4 4.4 0 0 1 8.8 1.8Z" />,
+    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z" />,
+    puzzle: <path d="M8.5 4H12v3.5a2.5 2.5 0 1 0 5 0V4h3v4.5h-3a2.5 2.5 0 1 1 0 5h3V20h-4.5v-3a2.5 2.5 0 1 0-5 0v3H4v-4.5h3a2.5 2.5 0 1 1 0-5H4V7.5h4.5z" />,
+    music: <><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></>,
+    brain: <><path d="M9.5 4.5A3.5 3.5 0 0 0 6 8v.5a3 3 0 0 0-1 5.7A3.5 3.5 0 0 0 8.5 19H10V6.5a2 2 0 0 0-.5-2Z" /><path d="M14.5 4.5A3.5 3.5 0 0 1 18 8v.5a3 3 0 0 1 1 5.7 3.5 3.5 0 0 1-3.5 4.8H14V6.5a2 2 0 0 1 .5-2Z" /><path d="M10 9H8m2 4H7m7-4h2m-2 4h3" /></>,
+    hand: <><path d="M6.5 11.5V6.8a1.3 1.3 0 0 1 2.6 0v4.1V5.2a1.3 1.3 0 0 1 2.6 0v5.7V4.8a1.3 1.3 0 0 1 2.6 0v6.1V6.2a1.3 1.3 0 0 1 2.6 0v7.2c0 4.2-2.1 6.6-6 6.6-2.8 0-4.5-1.4-5.5-3.4L4 13.8a1.6 1.6 0 0 1 2.5-2.3Z" /></>,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -186,6 +212,11 @@ function ChildChoiceButtons({ label, childList, selectedChildId, onSelectChild }
 function DomainIconBadge({ value, size = 22 }: { value?: string; size?: number }) {
   const option = DOMAIN_ICON_OPTIONS.find((item) => item.value === value) ?? DOMAIN_ICON_OPTIONS[0];
   return <span className={`domain-icon-badge ${option.tone}`}><Icon name={option.value} size={size} /></span>;
+}
+
+function resolveDomainIcon(domain: string, icons?: Record<string, DomainIcon>): DomainIcon {
+  const candidate = icons?.[domain] ?? DEFAULT_DOMAIN_ICONS[domain] ?? DOMAIN_ICON_OPTIONS[0].value;
+  return DOMAIN_ICON_OPTIONS.some((option) => option.value === candidate) ? candidate : DOMAIN_ICON_OPTIONS[0].value;
 }
 
 function DomainIconPicker({ value, onChange }: { value: DomainIcon; onChange: (value: DomainIcon) => void }) {
@@ -475,6 +506,15 @@ function GoalDialog({ mode, goals, domains, evaluationPeriods, editingGoal, init
   const canSave = isSettingsDomainEdit || isDomainEdit ? Boolean(domainName.trim()) : isPeriodEdit ? Boolean(periodLabel.trim()) : mode === "domain" ? Boolean(domain) : Boolean(text.trim());
   const updateShortTerm = (index: number, value: string) => setShortTerms((items) => items.map((item, itemIndex) => itemIndex === index ? value : item));
   const updatePeriodLabel = (index: number, value: string) => setPeriodLabels((items) => items.map((item, itemIndex) => itemIndex === index ? value : item));
+  const addPeriodLabel = () => {
+    setPeriodLabels((items) => [...items, `Tuần ${items.length + 1}`]);
+    setResultStatuses((items) => [...items, "Chưa đạt"]);
+  };
+  const removePeriodLabel = (index: number) => {
+    if (periodLabels.length <= 1) return;
+    setPeriodLabels((items) => items.filter((_, itemIndex) => itemIndex !== index));
+    setResultStatuses((items) => items.filter((_, itemIndex) => itemIndex !== index));
+  };
   const handleSave = () => {
     const nextPeriodLabels = periodLabels.map((item) => item.trim());
     if (isDomainEdit && (nextPeriodLabels.some((item) => !item) || new Set(nextPeriodLabels.map((item) => item.toLocaleLowerCase())).size !== nextPeriodLabels.length)) {
@@ -483,7 +523,7 @@ function GoalDialog({ mode, goals, domains, evaluationPeriods, editingGoal, init
     }
     onSave({ mode, text: isDomainEdit ? longTerm.trim() : isSettingsDomainEdit ? domainName.trim() : isPeriodEdit ? status : text.trim(), domain: isDomainEdit || isSettingsDomainEdit ? domainName.trim() : domain, domainIcon: isSettingsDomainEdit ? domainIcon : undefined, shortTerm: isDomainEdit ? shortTerms.map((item) => item.trim()).filter(Boolean) : undefined, statuses: isDomainEdit ? resultStatuses : undefined, note: isDomainEdit ? note.trim() : undefined, periodLabel: isPeriodEdit ? periodLabel.trim() : undefined, periodLabels: isDomainEdit ? nextPeriodLabels : undefined, goalId: mode === "short" ? Number(goalId) : editingGoal?.id });
   };
-  return <div className={`modal-backdrop ${isDomainEdit || isDomainAdd || isSettingsDomainEdit ? "domain-edit-modal" : isPeriodEdit || isEdit ? "small-edit-modal" : ""}`} role="presentation"><div className="modal-card goal-dialog" role="dialog" aria-modal="true" aria-labelledby="goal-dialog-title"><div className="modal-head"><div><h2 id="goal-dialog-title">{title}</h2><p>{description}</p></div><button type="button" className="close-button" onClick={onCancel} aria-label="Đóng">×</button></div><div className="form-grid">{(mode === "domain" || mode === "long") && <SelectField label="Lĩnh vực" value={domain} onChange={setDomain} options={domainOptions} required />}{mode === "short" && <label className="field"><span>Mục tiêu dài hạn<em>*</em></span><div className="select-wrap"><select value={goalId} onChange={(event) => setGoalId(event.target.value)}>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.longTerm || "Chưa nhập mục tiêu"}</option>)}</select><Icon name="chevron" size={18} /></div></label>}{isSettingsDomainEdit && <><InputField label="Tên lĩnh vực" value={domainName} onChange={setDomainName} required /><label className="field full"><span>Icon lĩnh vực<em>*</em></span><DomainIconPicker value={domainIcon} onChange={setDomainIcon} /></label></>}{isDomainEdit && <><SelectField label="Tên lĩnh vực" value={domainName} onChange={setDomainName} options={domainOptions} required /><label className="field full"><span>Mục tiêu dài hạn</span><input className="goal-long-term-input" list="goal-dialog-long-term-options" value={longTerm} onChange={(event) => setLongTerm(event.target.value)} placeholder="Chọn hoặc nhập mục tiêu dài hạn..." /><datalist id="goal-dialog-long-term-options">{[...new Set(goals.map((goal) => goal.longTerm.trim()).filter(Boolean))].map((option) => <option key={option} value={option} />)}</datalist></label><label className="field full"><span>Mục tiêu ngắn hạn</span><div className="quick-short-list">{shortTerms.map((item, index) => <div className="quick-short-row" key={index}><input value={item} onChange={(event) => updateShortTerm(index, event.target.value)} placeholder={`Mục tiêu ngắn hạn ${index + 1}`} /><button type="button" className="row-action delete" onClick={() => setShortTerms((items) => items.length > 1 ? items.filter((_, itemIndex) => itemIndex !== index) : items)} aria-label="Xóa mục tiêu ngắn hạn"><Icon name="trash" size={16} /></button></div>)}</div><button type="button" className="outline-button compact quick-add-button" onClick={() => setShortTerms((items) => [...items, ""])}><Icon name="plus" size={15} />Thêm mục tiêu ngắn hạn</button></label><label className="field full"><span>Kết quả theo tuần</span><div className="quick-results-list">{evaluationPeriods.map((period, index) => <div className="quick-result-row" key={`${period}-${index}`}><input className="quick-period-label" value={periodLabels[index] ?? period} onChange={(event) => updatePeriodLabel(index, event.target.value)} aria-label={`Tên thời gian ${period}`} /><div className="select-wrap"><select value={resultStatuses[index] ?? "Chưa đạt"} onChange={(event) => setResultStatuses((items) => items.map((item, itemIndex) => itemIndex === index ? event.target.value as Status : item))}>{STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select><Icon name="chevron" size={16} /></div></div>)}</div></label><label className="field full"><span>Ghi chú</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nhập ghi chú..." /></label></>}{isPeriodEdit && <><label className="field full"><span>Tên thời gian<em>*</em></span><input value={periodLabel} onChange={(event) => setPeriodLabel(event.target.value)} placeholder={placeholder} autoFocus /></label><label className="field full"><span>Trạng thái kết quả<em>*</em></span><div className="select-wrap"><select value={status} onChange={(event) => setStatus(event.target.value as Status)}>{STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select><Icon name="chevron" size={18} /></div></label></>}{mode !== "short" && mode !== "domain" && !isPeriodEdit && !isDomainEdit && !isSettingsDomainEdit && <label className="field full"><span>{label}<em>*</em></span>{mode === "period" ? <input value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus /> : <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus />}</label>}{mode === "short" && <label className="field full"><span>{label}<em>*</em></span><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus /></label>}</div><div className="modal-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" disabled={!canSave} onClick={handleSave}><Icon name="save" size={17} />Lưu</button></div></div></div>;
+  return <div className={`modal-backdrop ${isDomainEdit || isDomainAdd || isSettingsDomainEdit ? "domain-edit-modal" : isPeriodEdit || isEdit ? "small-edit-modal" : ""}`} role="presentation"><div className="modal-card goal-dialog" role="dialog" aria-modal="true" aria-labelledby="goal-dialog-title"><div className="modal-head"><div><h2 id="goal-dialog-title">{title}</h2><p>{description}</p></div><button type="button" className="close-button" onClick={onCancel} aria-label="Đóng">×</button></div><div className="form-grid">{(mode === "domain" || mode === "long") && <SelectField label="Lĩnh vực" value={domain} onChange={setDomain} options={domainOptions} required />}{mode === "short" && <label className="field"><span>Mục tiêu dài hạn<em>*</em></span><div className="select-wrap"><select value={goalId} onChange={(event) => setGoalId(event.target.value)}>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.longTerm || "Chưa nhập mục tiêu"}</option>)}</select><Icon name="chevron" size={18} /></div></label>}{isSettingsDomainEdit && <><InputField label="Tên lĩnh vực" value={domainName} onChange={setDomainName} required /><label className="field full"><span>Icon lĩnh vực<em>*</em></span><DomainIconPicker value={domainIcon} onChange={setDomainIcon} /></label></>}{isDomainEdit && <><SelectField label="Tên lĩnh vực" value={domainName} onChange={setDomainName} options={domainOptions} required /><label className="field full"><span>Mục tiêu dài hạn</span><input className="goal-long-term-input" list="goal-dialog-long-term-options" value={longTerm} onChange={(event) => setLongTerm(event.target.value)} placeholder="Chọn hoặc nhập mục tiêu dài hạn..." /><datalist id="goal-dialog-long-term-options">{[...new Set(goals.map((goal) => goal.longTerm.trim()).filter(Boolean))].map((option) => <option key={option} value={option} />)}</datalist></label><label className="field full"><span>Mục tiêu ngắn hạn</span><div className="quick-short-list">{shortTerms.map((item, index) => <div className="quick-short-row" key={index}><input value={item} onChange={(event) => updateShortTerm(index, event.target.value)} placeholder={`Mục tiêu ngắn hạn ${index + 1}`} /><button type="button" className="row-action delete" onClick={() => setShortTerms((items) => items.length > 1 ? items.filter((_, itemIndex) => itemIndex !== index) : items)} aria-label="Xóa mục tiêu ngắn hạn"><Icon name="trash" size={16} /></button></div>)}</div><button type="button" className="outline-button compact quick-add-button" onClick={() => setShortTerms((items) => [...items, ""])}><Icon name="plus" size={15} />Thêm mục tiêu ngắn hạn</button></label><label className="field full"><span>Kết quả theo tuần</span><div className="quick-results-list">{periodLabels.map((period, index) => <div className="quick-result-row" key={`${period}-${index}`}><input className="quick-period-label" value={period} onChange={(event) => updatePeriodLabel(index, event.target.value)} aria-label={`Tên thời gian ${period}`} /><div className="select-wrap"><select value={resultStatuses[index] ?? "Chưa đạt"} onChange={(event) => setResultStatuses((items) => items.map((item, itemIndex) => itemIndex === index ? event.target.value as Status : item))}>{STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select><Icon name="chevron" size={16} /></div><button type="button" className="row-action delete" onClick={() => removePeriodLabel(index)} disabled={periodLabels.length <= 1} aria-label={`Xóa ${period}`}><Icon name="trash" size={16} /></button></div>)}</div><button type="button" className="outline-button compact quick-add-button" onClick={addPeriodLabel}><Icon name="plus" size={15} />Thêm kết quả theo tuần</button></label><label className="field full"><span>Ghi chú</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nhập ghi chú..." /></label></>}{isPeriodEdit && <><label className="field full"><span>Tên thời gian<em>*</em></span><input value={periodLabel} onChange={(event) => setPeriodLabel(event.target.value)} placeholder={placeholder} autoFocus /></label><label className="field full"><span>Trạng thái kết quả<em>*</em></span><div className="select-wrap"><select value={status} onChange={(event) => setStatus(event.target.value as Status)}>{STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select><Icon name="chevron" size={18} /></div></label></>}{mode !== "short" && mode !== "domain" && !isPeriodEdit && !isDomainEdit && !isSettingsDomainEdit && <label className="field full"><span>{label}<em>*</em></span>{mode === "period" ? <input value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus /> : <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus />}</label>}{mode === "short" && <label className="field full"><span>{label}<em>*</em></span><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} autoFocus /></label>}</div><div className="modal-actions"><button type="button" className="button" onClick={onCancel}>Hủy</button><button type="button" className="button primary" disabled={!canSave} onClick={handleSave}><Icon name="save" size={17} />Lưu</button></div></div></div>;
 }
 
 function NoteDialog({ goal, onCancel, onSave }: { goal?: Goal; onCancel: () => void; onSave: (note: string) => void }) {
@@ -591,7 +631,8 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [evaluationPeriods, setEvaluationPeriods] = useState<string[]>(DEFAULT_EVALUATION_PERIODS);
+  const [legacyEvaluationPeriods, setLegacyEvaluationPeriods] = useState<string[]>(DEFAULT_EVALUATION_PERIODS);
+  const [evaluationPeriodsByChild, setEvaluationPeriodsByChild] = useState<Record<string, string[]>>({});
   const [domains, setDomains] = useState<string[]>(DOMAIN_OPTIONS);
   const [domainIcons, setDomainIcons] = useState<Record<string, DomainIcon>>(DEFAULT_DOMAIN_ICONS);
   const [collapsedGoalIds, setCollapsedGoalIds] = useState<number[]>([]);
@@ -604,17 +645,25 @@ export default function Home() {
   const [cloudError, setCloudError] = useState(false);
   const [cloudExtras, setCloudExtras] = useState<Record<string, unknown>>({});
   const cloudSaveTimer = useRef<number | null>(null);
+  const periodsForChild = (childId: number) => normalizeEvaluationPeriods(evaluationPeriodsByChild[String(childId)], legacyEvaluationPeriods);
+  const evaluationPeriods = useMemo(() => periodsForChild(selectedChildId), [selectedChildId, legacyEvaluationPeriods, evaluationPeriodsByChild]);
+  const currentEvaluationPeriods = evaluationPeriods;
+  const setEvaluationPeriods = setLegacyEvaluationPeriods;
 
   useEffect(() => { document.documentElement.classList.toggle("dark-mode", darkMode); window.localStorage.setItem("giaoan-theme", darkMode ? "dark" : "light"); }, [darkMode]);
   useEffect(() => {
     let active = true;
     loadCloudData<AppCloudData>().then((data) => {
       if (!active) return;
-      const { children: cloudChildren, goals: cloudGoals, evaluationPeriods: cloudPeriods, domains: cloudDomains, domainIcons: cloudDomainIcons, collapsedGoalIds: cloudCollapsedGoalIds, ...extras } = data ?? {};
+      const { children: cloudChildren, goals: cloudGoals, evaluationPeriods: cloudPeriods, evaluationPeriodsByChild: cloudPeriodsByChild, domains: cloudDomains, domainIcons: cloudDomainIcons, collapsedGoalIds: cloudCollapsedGoalIds, ...extras } = data ?? {};
+      const nextChildren = Array.isArray(cloudChildren) ? cloudChildren : [];
+      const legacyPeriods = normalizeEvaluationPeriods(cloudPeriods);
       setCloudExtras(extras);
-      setChildren(Array.isArray(cloudChildren) ? cloudChildren : []);
+      setChildren(nextChildren);
       setGoals(Array.isArray(cloudGoals) ? cloudGoals : []);
-      if (Array.isArray(cloudPeriods) && cloudPeriods.length) setEvaluationPeriods(cloudPeriods);
+      setEvaluationPeriods(legacyPeriods);
+      setEvaluationPeriodsByChild(buildEvaluationPeriodsByChild(nextChildren, cloudPeriodsByChild, legacyPeriods));
+      setSelectedChildId(nextChildren[0]?.id ?? 0);
       if (Array.isArray(cloudDomains) && cloudDomains.length) setDomains([...new Set([...DOMAIN_OPTIONS, ...cloudDomains.filter((domain): domain is string => typeof domain === "string" && domain.trim()).map((domain) => domain.trim())])]);
       if (cloudDomainIcons && typeof cloudDomainIcons === "object") setDomainIcons({ ...DEFAULT_DOMAIN_ICONS, ...cloudDomainIcons });
       if (Array.isArray(cloudCollapsedGoalIds)) setCollapsedGoalIds(cloudCollapsedGoalIds.filter((id): id is number => typeof id === "number"));
@@ -626,25 +675,44 @@ export default function Home() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
+    if (!cloudReady || shareChildSlug === null) return;
+    const sharedChild = children.find((child) => childNameSlug(child.name) === shareChildSlug);
+    if (sharedChild && sharedChild.id !== selectedChildId) setSelectedChildId(sharedChild.id);
+  }, [cloudReady, shareChildSlug, children, selectedChildId]);
+  useEffect(() => {
     if (!cloudReady || shareChildSlug !== null) return;
     if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current);
     cloudSaveTimer.current = window.setTimeout(() => {
-      saveCloudData({ ...cloudExtras, children, goals, evaluationPeriods, domains, domainIcons, collapsedGoalIds }).catch((error) => console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error));
+      saveCloudData({ ...cloudExtras, children, goals, evaluationPeriods: currentEvaluationPeriods, evaluationPeriodsByChild, domains, domainIcons, collapsedGoalIds }).catch((error) => console.error("Không thể đồng bộ dữ liệu lên Google Sheet:", error));
     }, 250);
     return () => { if (cloudSaveTimer.current !== null) window.clearTimeout(cloudSaveTimer.current); };
-  }, [children, goals, evaluationPeriods, domains, domainIcons, collapsedGoalIds, cloudExtras, cloudReady, shareChildSlug]);
+  }, [children, goals, evaluationPeriods, currentEvaluationPeriods, evaluationPeriodsByChild, domains, domainIcons, collapsedGoalIds, cloudExtras, cloudReady, shareChildSlug]);
 
-  const updateStatus = (id: number, periodIndex: number, status: Status) => setGoals((items) => items.map((goal) => goal.id === id ? { ...goal, statuses: evaluationPeriods.map((_, index) => index === periodIndex ? status : goal.statuses[index] ?? "Chưa đạt") } : goal));
-  const saveChild = (data: Omit<Child, "id">) => { if (editingChild) setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item)); else setChildren((items) => [...items, { ...data, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setShowChildForm(false); setEditingChild(undefined); };
-  const deleteChild = (id: number) => { const child = children.find((item) => item.id === id); if (!child || !window.confirm(`Xóa hồ sơ của ${child.name}?`)) return; setChildren((items) => items.filter((item) => item.id !== id)); setGoals((items) => items.filter((goal) => goal.childId !== id)); if (selectedChildId === id) { const next = children.find((item) => item.id !== id); if (next) setSelectedChildId(next.id); } };
-  const saveGoal = (goal: Omit<Goal, "id">) => { setGoals((items) => [...items, { ...goal, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setSelectedChildId(goal.childId); setView("plan"); };
+  const updateStatus = (id: number, periodIndex: number, status: Status) => setGoals((items) => items.map((goal) => {
+    if (goal.id !== id) return goal;
+    const periods = periodsForChild(goal.childId);
+    return { ...goal, statuses: periods.map((_, index) => index === periodIndex ? status : goal.statuses[index] ?? "Chưa đạt") };
+  }));
+  const saveChild = (data: Omit<Child, "id">) => {
+    if (editingChild) {
+      setChildren((items) => items.map((item) => item.id === editingChild.id ? { ...data, id: item.id } : item));
+    } else {
+      const newId = Math.max(0, ...children.map((item) => item.id)) + 1;
+      setChildren((items) => [...items, { ...data, id: newId }]);
+      setEvaluationPeriodsByChild((items) => ({ ...items, [String(newId)]: [...legacyEvaluationPeriods] }));
+    }
+    setShowChildForm(false);
+    setEditingChild(undefined);
+  };
+  const deleteChild = (id: number) => { const child = children.find((item) => item.id === id); if (!child || !window.confirm(`Xóa hồ sơ của ${child.name}?`)) return; setChildren((items) => items.filter((item) => item.id !== id)); setGoals((items) => items.filter((goal) => goal.childId !== id)); setEvaluationPeriodsByChild((items) => { const next = { ...items }; delete next[String(id)]; return next; }); if (selectedChildId === id) { const next = children.find((item) => item.id !== id); if (next) setSelectedChildId(next.id); } };
+  const saveGoal = (goal: Omit<Goal, "id">) => { const childPeriods = periodsForChild(goal.childId); const normalizedGoal = { ...goal, statuses: childPeriods.map((_, index) => goal.statuses[index] ?? "ChÆ°a Ä‘áº¡t") }; setEvaluationPeriodsByChild((items) => items[String(goal.childId)] ? items : { ...items, [String(goal.childId)]: [...childPeriods] }); setGoals((items) => [...items, { ...normalizedGoal, id: Math.max(0, ...items.map((item) => item.id)) + 1 }]); setSelectedChildId(goal.childId); setView("plan"); };
   const addDomain = (value: string, iconValue: DomainIcon) => { setDomains((items) => items.some((domain) => domain.toLocaleLowerCase() === value.toLocaleLowerCase()) ? items : [...items, value]); setDomainIcons((items) => ({ ...items, [value]: iconValue })); };
   const updateDomainIcon = (domain: string, iconValue: DomainIcon) => setDomainIcons((items) => ({ ...items, [domain]: iconValue }));
   const toggleCollapse = (goalId: number) => setCollapsedGoalIds((items) => items.includes(goalId) ? items.filter((id) => id !== goalId) : [...items, goalId]);
   const openGoalDialog = (state: GoalDialogState) => setGoalDialog(state);
   const editDomain = (domain: string) => {
     const goal = goals.find((item) => item.childId === selectedChildId && item.domain === domain) ?? goals.find((item) => item.domain === domain);
-    const fallback: Goal = { id: 0, childId: selectedChildId, domain, longTerm: "", shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: evaluationPeriods.map(() => "Chưa đạt") };
+    const fallback: Goal = { id: 0, childId: selectedChildId, domain, longTerm: "", shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: currentEvaluationPeriods.map(() => "Chưa đạt") };
     openGoalDialog({ mode: "edit-domain", goalId: goal?.id, editingGoal: goal ?? fallback, initialDomain: domain, initialIcon: domainIcons[domain] });
   };
   const editDomainSetting = (domain: string) => {
@@ -659,7 +727,8 @@ export default function Home() {
   };
   const saveGoalDialog = ({ mode, text, domain, goalId, periodLabel, periodLabels, domainIcon, shortTerm, statuses, note }: GoalDialogSave) => {
     if (mode === "domain") {
-      setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain, longTerm: "", shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: evaluationPeriods.map(() => "Chưa đạt") }]);
+      setEvaluationPeriodsByChild((items) => items[String(selectedChildId)] ? items : { ...items, [String(selectedChildId)]: [...currentEvaluationPeriods] });
+      setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain, longTerm: "", shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: currentEvaluationPeriods.map(() => "Chưa đạt") }]);
     } else if (mode === "edit-domain-setting") {
       const previousDomain = goalDialog?.initialDomain ?? domain;
       setDomains((items) => items.map((item) => item === previousDomain ? domain : item));
@@ -670,11 +739,14 @@ export default function Home() {
       });
       setGoals((items) => items.map((goal) => goal.domain === previousDomain ? { ...goal, domain } : goal));
     } else if (mode === "long") {
-      setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain: domain || domains[0] || DOMAIN_OPTIONS[0], longTerm: text, shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: evaluationPeriods.map(() => "Chưa đạt") }]);
+      setEvaluationPeriodsByChild((items) => items[String(selectedChildId)] ? items : { ...items, [String(selectedChildId)]: [...currentEvaluationPeriods] });
+      setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain: domain || domains[0] || DOMAIN_OPTIONS[0], longTerm: text, shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: currentEvaluationPeriods.map(() => "Chưa đạt") }]);
     } else if (mode === "edit-domain" && goalDialog) {
       const currentGoal = goals.find((goal) => goal.id === goalDialog.goalId) ?? goalDialog.editingGoal;
       const previousDomain = currentGoal?.domain ?? goalDialog.initialDomain ?? domain;
-      const nextPeriodLabels = periodLabels?.length ? periodLabels : evaluationPeriods;
+      const childId = currentGoal?.childId ?? selectedChildId;
+      const childPeriods = periodsForChild(childId);
+      const nextPeriodLabels = periodLabels?.length ? periodLabels : childPeriods;
       const normalizedLabels = nextPeriodLabels.map((label) => label.trim());
       const normalizedKeySet = new Set(normalizedLabels.map((label) => label.toLocaleLowerCase()));
       if (!normalizedLabels.length || normalizedLabels.some((label) => !label) || normalizedKeySet.size !== normalizedLabels.length) { window.alert("Tên thời gian theo tuần phải đầy đủ và không được trùng nhau."); return; }
@@ -683,7 +755,8 @@ export default function Home() {
         if (!isTargetGoal) return goal;
         return { ...goal, domain, longTerm: text, shortTerm: shortTerm ?? goal.shortTerm, statuses: normalizedLabels.map((_, index) => statuses?.[index] ?? goal.statuses[index] ?? "Chưa đạt"), note };
       }));
-      setEvaluationPeriods(normalizedLabels);
+      setEvaluationPeriodsByChild((items) => ({ ...items, [String(childId)]: normalizedLabels }));
+      if (childId === selectedChildId) setEvaluationPeriods(normalizedLabels);
       setDomains((items) => items.includes(domain) ? items : items.map((item) => item === previousDomain ? domain : item));
       setDomainIcons((items) => { const next = { ...items, [domain]: domainIcon ?? items[domain] ?? items[previousDomain] ?? DEFAULT_DOMAIN_ICONS[domain] ?? DOMAIN_ICON_OPTIONS[0].value }; if (previousDomain !== domain) delete next[previousDomain]; return next; });
     } else if (mode === "edit-long" && goalDialog?.goalId) {
@@ -693,13 +766,20 @@ export default function Home() {
     } else if (mode === "edit-short" && goalDialog?.goalId && goalDialog.shortIndex !== undefined) {
       setGoals((items) => items.map((goal) => goal.id === goalDialog.goalId ? { ...goal, shortTerm: goal.shortTerm.map((item, index) => index === goalDialog.shortIndex ? text : item) } : goal));
     } else if (mode === "edit-period" && goalDialog?.goalId && goalDialog.periodIndex !== undefined) {
+      const targetGoal = goals.find((goal) => goal.id === goalDialog.goalId);
+      const childId = targetGoal?.childId ?? selectedChildId;
       setGoals((items) => items.map((goal) => goal.id === goalDialog.goalId ? { ...goal, statuses: goal.statuses.map((item, index) => index === goalDialog.periodIndex ? text as Status : item) } : goal));
-      if (periodLabel && !evaluationPeriods.some((label, index) => index !== goalDialog.periodIndex && label.toLocaleLowerCase() === periodLabel.toLocaleLowerCase())) {
-        setEvaluationPeriods((items) => items.map((label, index) => index === goalDialog.periodIndex ? periodLabel : label));
+      const childPeriods = periodsForChild(childId);
+      if (periodLabel && !childPeriods.some((label, index) => index !== goalDialog.periodIndex && label.toLocaleLowerCase() === periodLabel.toLocaleLowerCase())) {
+        const nextPeriods = childPeriods.map((label, index) => index === goalDialog.periodIndex ? periodLabel : label);
+        setEvaluationPeriodsByChild((items) => ({ ...items, [String(childId)]: nextPeriods }));
+        if (childId === selectedChildId) setEvaluationPeriods(nextPeriods);
       }
-    } else if (mode === "period" && !evaluationPeriods.includes(text)) {
-      setEvaluationPeriods((items) => [...items, text]);
-      setGoals((items) => items.map((goal) => ({ ...goal, statuses: [...goal.statuses, "Chưa đạt"] })));
+    } else if (mode === "period" && !currentEvaluationPeriods.includes(text)) {
+      const nextPeriods = [...currentEvaluationPeriods, text];
+      setEvaluationPeriodsByChild((items) => ({ ...items, [String(selectedChildId)]: nextPeriods }));
+      setEvaluationPeriods(nextPeriods);
+      setGoals((items) => items.map((goal) => goal.childId === selectedChildId ? { ...goal, statuses: [...goal.statuses, "Chưa đạt"] } : goal));
     }
     setGoalDialog(null);
   };
