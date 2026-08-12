@@ -1,6 +1,14 @@
 (() => {
   const isSharePage = new URLSearchParams(window.location.search).has('share');
 
+  function ensureHiddenFieldsStayHidden() {
+    if (document.getElementById('hidden-field-visibility-fix')) return;
+    const style = document.createElement('style');
+    style.id = 'hidden-field-visibility-fix';
+    style.textContent = '.field[hidden],[hidden]{display:none!important}';
+    document.head.appendChild(style);
+  }
+
   function mergeOverviewHeader() {
     document.querySelectorAll('#screen-overview .goals-table').forEach((table) => {
       if (table.dataset.overviewHeaderFixed === 'true') return;
@@ -23,6 +31,7 @@
   }
 
   function boot() {
+    ensureHiddenFieldsStayHidden();
     const overviewScreen = document.querySelector('#screen-overview');
     if (!overviewScreen) return;
     const observer = new MutationObserver(mergeOverviewHeader);
