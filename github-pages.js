@@ -12,7 +12,13 @@
     { value: 'calendar', label: 'Thói quen', tone: 'pink' },
     { value: 'note', label: 'Giao tiếp', tone: 'green' },
     { value: 'overview', label: 'Khám phá', tone: 'indigo' },
-    { value: 'plan', label: 'Học tập', tone: 'yellow' }
+    { value: 'plan', label: 'Học tập', tone: 'yellow' },
+    { value: 'heart', label: 'Cảm xúc', tone: 'pink' },
+    { value: 'star', label: 'Tiến bộ', tone: 'yellow' },
+    { value: 'puzzle', label: 'Kỹ năng', tone: 'indigo' },
+    { value: 'music', label: 'Âm nhạc', tone: 'teal' },
+    { value: 'brain', label: 'Tư duy', tone: 'blue' },
+    { value: 'hand', label: 'Vận động', tone: 'orange' }
   ];
   const defaultDomainIcons = { 'Tương tác xã hội': 'group', 'Chú ý chung': 'eye', 'Giao tiếp': 'note', 'Kỹ năng tự phục vụ': 'children' };
   const scheduleColorOptions = [
@@ -26,6 +32,7 @@
   const teachingDayLabels = { 1: 'Thứ 2', 2: 'Thứ 3', 3: 'Thứ 4', 4: 'Thứ 5', 5: 'Thứ 6', 6: 'Thứ 7', 7: 'Chủ nhật' };
   const defaults = {
     evaluationPeriods: [...weekLabels],
+    evaluationPeriodsByChild: {},
     domains: [...domains],
     domainIcons: { ...defaultDomainIcons },
     collapsedGoalIds: [],
@@ -42,8 +49,25 @@
   defaults.children = [];
   defaults.goals = [];
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
-  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: loaded?.evaluationPeriods || defaults.evaluationPeriods, domains: loaded?.domains || defaults.domains, domainIcons: { ...defaultDomainIcons, ...(loaded?.domainIcons || {}) }, collapsedGoalIds: Array.isArray(loaded?.collapsedGoalIds) ? loaded.collapsedGoalIds : [], children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
-  weekLabels = state.evaluationPeriods;
+  const normalizePeriods = (value, fallback = weekLabels) => {
+    const periods = Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
+    return periods.length ? periods : [...fallback];
+  };
+  const initialChildren = Array.isArray(loaded?.children) ? loaded.children : defaults.children;
+  const legacyPeriods = normalizePeriods(loaded?.evaluationPeriods || defaults.evaluationPeriods);
+  const rawPeriodsByChild = loaded?.evaluationPeriodsByChild && typeof loaded.evaluationPeriodsByChild === 'object' ? loaded.evaluationPeriodsByChild : {};
+  const initialPeriodsByChild = Object.fromEntries(initialChildren.map((child) => [String(child.id), normalizePeriods(rawPeriodsByChild[String(child.id)], legacyPeriods)]));
+  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: legacyPeriods, evaluationPeriodsByChild: initialPeriodsByChild, domains: loaded?.domains || defaults.domains, domainIcons: { ...defaultDomainIcons, ...(loaded?.domainIcons || {}) }, collapsedGoalIds: Array.isArray(loaded?.collapsedGoalIds) ? loaded.collapsedGoalIds : [], children: initialChildren, goals: loaded?.goals || defaults.goals, selectedChildId: initialChildren[0]?.id || 0, view: 'plan' };
+  const periodsForChild = (childId) => normalizePeriods(state.evaluationPeriodsByChild?.[String(childId)], state.evaluationPeriods || weekLabels);
+  const setPeriodsForChild = (childId, periods) => {
+    const nextPeriods = normalizePeriods(periods);
+    state.evaluationPeriodsByChild = { ...(state.evaluationPeriodsByChild || {}), [String(childId)]: nextPeriods };
+    if (Number(childId) === Number(state.selectedChildId)) {
+      state.evaluationPeriods = [...nextPeriods];
+      weekLabels = [...nextPeriods];
+    }
+  };
+  weekLabels = periodsForChild(state.selectedChildId);
   domains = state.domains;
   const childNameSlug = (name) => String(name ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const shareChildSlug = (() => { const value = new URLSearchParams(window.location.search).get('share'); return value?.trim().toLowerCase() || null; })();
@@ -110,8 +134,8 @@
 
   const tableAdd = (label, action) => `<button type="button" class="table-add-button" data-action="${action}">${icon('plus')}${label}</button>`;
   const statusMarkup = (status, goalId, periodIndex, readOnly) => readOnly ? `<div class="status-readonly ${status === 'Đạt' ? 'achieved' : status === 'Manh nha' ? 'emerging' : 'not-achieved'}"><span class="status-dot"></span><span>${esc(status)}</span></div>` : `<label class="status-select ${status === 'Đạt' ? 'achieved' : status === 'Manh nha' ? 'emerging' : 'not-achieved'}"><span class="status-dot"></span><select data-goal-id="${goalId}" data-week="${periodIndex}">${statuses.map((item) => `<option ${item === status ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</label>`;
-  function renderGoalsBoard(goals) {
-    const periods = state.evaluationPeriods?.length ? state.evaluationPeriods : weekLabels;
+  function renderGoalsBoard(goals, childId = state.selectedChildId) {
+    const periods = periodsForChild(childId);
     const cards = goals.map((goal) => {
       const shortGoals = goal.shortTerm?.length ? goal.shortTerm.map((item, shortIndex) => `<div class="short-goal-row"><span class="short-goal-bullet"></span><span class="short-goal-text">${esc(item || 'Chưa nhập mục tiêu')}</span><span class="short-goal-actions"><button type="button" class="row-action edit" data-action="edit-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Sửa mục tiêu ngắn hạn">${icon('edit')}</button><button type="button" class="row-action delete" data-action="delete-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></span></div>`).join('') : '<p class="muted-copy">Chưa có mục tiêu ngắn hạn.</p>';
       const searchText = esc(`${goal.domain || ''} ${goal.longTerm || ''} ${(goal.shortTerm || []).join(' ')}`.toLowerCase());
@@ -120,10 +144,10 @@
     const empty = `<div class="board-empty-state"><span class="board-empty-icon">${icon('target')}</span><strong>Chưa có mục tiêu phát triển</strong><span>Bắt đầu bằng cách thêm lĩnh vực hoặc mục tiêu dài hạn.</span><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div>`;
     return `<div class="goals-board"><div class="board-toolbar"><div class="board-search">${icon('overview')}<input type="search" data-goal-search placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm mục tiêu" /></div><span class="board-summary"><strong data-board-count>${goals.length}</strong> mục tiêu đang theo dõi</span><div class="board-actions"><button type="button" class="button board-secondary-action" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button></div></div><div class="goal-card-list" data-goal-card-list>${cards || empty}</div><div class="board-footer"><span>Hiển thị <strong data-board-footer-count>${goals.length}</strong> mục tiêu</span><span class="board-footer-hint">Mẹo: dùng nút Sửa/Xóa ngay trên từng thẻ để thao tác nhanh.</span></div></div>`;
   }
-  function renderGoalsTable(goals, readOnly = false) {
-    if (!readOnly) return renderGoalsBoard(goals);
+  function renderGoalsTable(goals, readOnly = false, childId = state.selectedChildId) {
+    if (!readOnly) return renderGoalsBoard(goals, childId);
     goals = [...new Set(goals.map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.domain === domain));
-    const periods = state.evaluationPeriods?.length ? state.evaluationPeriods : weekLabels;
+    const periods = periodsForChild(childId);
     const counts = goals.reduce((result, goal) => { result[goal.domain] = (result[goal.domain] || 0) + 1; return result; }, {});
     const rows = goals.map((goal, index) => {
       const first = index === 0 || goals[index - 1].domain !== goal.domain;
@@ -151,7 +175,7 @@
     if (!child) { main.innerHTML = `<div class="share-page"><div class="share-loading"><strong>Không tìm thấy hồ sơ</strong><span>Đường dẫn có thể đã hết hiệu lực hoặc hồ sơ không tồn tại.</span></div></div>`; return; }
     const goals = state.goals.filter((goal) => goal.childId === child.id);
     const achieved = goals.reduce((total, goal) => total + (goal.statuses || []).filter((status) => status === 'Đạt').length, 0);
-    main.innerHTML = `<div class="share-page"><div class="share-container"><header class="share-header"><div class="share-brand"><span class="share-brand-mark">${icon('target')}</span><div><strong>KẾ HOẠCH GIÁO DỤC</strong><small>Trang chia sẻ hồ sơ trẻ</small></div></div><span class="share-readonly">${icon('file')}Chỉ xem</span></header><section class="share-hero"><span class="share-eyebrow">HỒ SƠ TRẺ</span><h1>${esc(child.name)}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section>${childSummaryMarkup(child, false)}<div class="share-summary"><span><strong>${goals.length}</strong> mục tiêu đang theo dõi</span><span><strong>${achieved}</strong> kết quả đạt</span></div><section class="share-goals overview-goals-panel"><div class="share-section-heading"><div><span class="share-eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><span class="share-lock">${icon('file')}Chế độ chỉ xem</span></div>${renderGoalsTable(goals, true)}</section><footer class="share-footer">Đường dẫn này chỉ hiển thị thông tin của <strong>${esc(child.name)}</strong>.</footer></div></div>`;
+    main.innerHTML = `<div class="share-page"><div class="share-container"><header class="share-header"><div class="share-brand"><span class="share-brand-mark">${icon('target')}</span><div><strong>KẾ HOẠCH GIÁO DỤC</strong><small>Trang chia sẻ hồ sơ trẻ</small></div></div><span class="share-readonly">${icon('file')}Chỉ xem</span></header><section class="share-hero"><span class="share-eyebrow">HỒ SƠ TRẺ</span><h1>${esc(child.name)}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section>${childSummaryMarkup(child, false)}<div class="share-summary"><span><strong>${goals.length}</strong> mục tiêu đang theo dõi</span><span><strong>${achieved}</strong> kết quả đạt</span></div><section class="share-goals overview-goals-panel"><div class="share-section-heading"><div><span class="share-eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><span class="share-lock">${icon('file')}Chế độ chỉ xem</span></div>${renderGoalsTable(goals, true, child.id)}</section><footer class="share-footer">Đường dẫn này chỉ hiển thị thông tin của <strong>${esc(child.name)}</strong>.</footer></div></div>`;
   }
 
   const overviewCalendarToday = new Date();
@@ -200,7 +224,7 @@
     if (!child) { $('#screen-overview').innerHTML = `<div class="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const goals = state.goals.filter((goal) => goal.childId === child.id);
     const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('file')}Xem kế hoạch`, 'view-plan', true)}</div>`;
-    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}${overviewCalendarMarkup()}<div class="overview-toolbar">${childChoiceButtons('Đang xem tổng quan của', 'overview')}</div>${childSummaryMarkup(child)}<section class="overview-goals-panel"><div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div>${renderGoalsTable(goals, true)}</section>`;
+    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}${overviewCalendarMarkup()}<div class="overview-toolbar">${childChoiceButtons('Đang xem tổng quan của', 'overview')}</div>${childSummaryMarkup(child)}<section class="overview-goals-panel"><div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div>${renderGoalsTable(goals, true, child.id)}</section>`;
   }
 
   function renderOverviewLegacy() {
@@ -246,7 +270,7 @@
     const orderedDomains = [...new Set(childGoals.map((goal) => goal.domain))];
     const goals = orderedDomains.flatMap((domain) => childGoals.filter((goal) => goal.domain === domain));
     const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('file')}Xuất PDF`, 'print', true)}</div>`;
-    $('#screen-plan').innerHTML = `${header('Kế hoạch giáo dục', '', actions)}<div class="plan-toolbar">${childChoiceButtons('Đang xem hồ sơ của', 'plan')}<div class="plan-count"><span class="count-number">${goals.length}</span><span>mục tiêu đang theo dõi</span></div></div>${childSummaryMarkup(child)}<div class="section-title-row"><div><h2>${icon('calendar')}MỤC TIÊU PHÁT TRIỂN</h2></div><div class="mini-legend"><span><i class="dot green"></i>Đạt (Đ)</span><span><i class="dot yellow"></i>Manh nha (MN)</span><span><i class="dot gray"></i>Chưa đạt (CĐ)</span></div></div>${renderGoalsTable(goals, false)}`;
+    $('#screen-plan').innerHTML = `${header('Kế hoạch giáo dục', '', actions)}<div class="plan-toolbar">${childChoiceButtons('Đang xem hồ sơ của', 'plan')}<div class="plan-count"><span class="count-number">${goals.length}</span><span>mục tiêu đang theo dõi</span></div></div>${childSummaryMarkup(child)}<div class="section-title-row"><div><h2>${icon('calendar')}MỤC TIÊU PHÁT TRIỂN</h2></div><div class="mini-legend"><span><i class="dot green"></i>Đạt (Đ)</span><span><i class="dot yellow"></i>Manh nha (MN)</span><span><i class="dot gray"></i>Chưa đạt (CĐ)</span></div></div>${renderGoalsTable(goals, false, child.id)}`;
   }
 
   function renderPlan() {
@@ -344,19 +368,19 @@
     if (!$('#goal-domain-icon-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-domain-icon-field'; field.innerHTML = '<span>Icon lĩnh vực<em>*</em></span><div id="goal-dialog-icon-picker"></div><input type="hidden" id="goal-dialog-icon-value" />'; parent.before(field); }
     if (!$('#goal-edit-long-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-long-field'; field.innerHTML = '<span>Mục tiêu dài hạn</span><input id="goal-dialog-edit-long" list="goal-dialog-long-options" placeholder="Chọn hoặc nhập mục tiêu dài hạn..." /><datalist id="goal-dialog-long-options"></datalist>'; parent.before(field); }
     if (!$('#goal-edit-short-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-short-field'; field.innerHTML = '<span>Mục tiêu ngắn hạn</span><div id="goal-dialog-short-list" class="quick-short-list"></div><button type="button" class="outline-button compact quick-add-button" data-action="edit-domain-add-short"><svg><use href="#icon-plus"></use></svg>Thêm mục tiêu ngắn hạn</button>'; parent.before(field); }
-    if (!$('#goal-edit-results-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-results-field'; field.innerHTML = '<span>Kết quả theo tuần</span><div id="goal-dialog-results-list" class="quick-results-list"></div>'; parent.before(field); }
+    if (!$('#goal-edit-results-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-results-field'; field.innerHTML = '<span>Kết quả theo tuần</span><div id="goal-dialog-results-list" class="quick-results-list"></div><button type="button" class="outline-button compact quick-add-button" data-action="edit-domain-add-period"><svg><use href="#icon-plus"></use></svg>Thêm kết quả theo tuần</button>'; parent.before(field); }
     if (!$('#goal-edit-note-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-note-field'; field.innerHTML = '<span>Ghi chú</span><textarea id="goal-dialog-note" placeholder="Nhập ghi chú..."></textarea>'; parent.before(field); }
   }
 
   function renderDomainEditFields(goal, domainNameOverride = '') {
-    const periods = state.evaluationPeriods?.length ? state.evaluationPeriods : weekLabels;
+    const periods = periodsForChild(goal?.childId || state.selectedChildId);
     const currentDomain = goal?.domain || domainNameOverride;
     $('#goal-dialog-domain-name').value = currentDomain;
     $('#goal-dialog-icon-value').value = state.domainIcons?.[currentDomain] || defaultDomainIcons[currentDomain] || domainIconOptions[0].value;
     $('#goal-dialog-icon-picker').innerHTML = domainIconPicker($('#goal-dialog-icon-value').value);
     $('#goal-dialog-edit-long').value = goal?.longTerm || '';
     $('#goal-dialog-short-list').innerHTML = (goal?.shortTerm?.length ? goal.shortTerm : ['']).map((value, index) => `<div class="quick-short-row"><input data-edit-domain-short value="${esc(value)}" placeholder="Mục tiêu ngắn hạn ${index + 1}" /><button type="button" class="row-action delete" data-action="edit-domain-remove-short" data-short-index="${index}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></div>`).join('');
-    $('#goal-dialog-results-list').innerHTML = periods.map((period, index) => `<div class="quick-result-row"><input class="quick-period-label" data-edit-domain-period data-period-index="${index}" value="${esc(period)}" aria-label="Tên thời gian ${esc(period)}" /><div class="select-wrap"><select data-edit-domain-status data-period-index="${index}">${statuses.map((item) => `<option ${item === (goal?.statuses?.[index] || 'Chưa đạt') ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</div></div>`).join('');
+    $('#goal-dialog-results-list').innerHTML = periods.map((period, index) => `<div class="quick-result-row"><input class="quick-period-label" data-edit-domain-period data-period-index="${index}" value="${esc(period)}" aria-label="Tên thời gian ${esc(period)}" /><div class="select-wrap"><select data-edit-domain-status data-period-index="${index}">${statuses.map((item) => `<option ${item === (goal?.statuses?.[index] || 'Chưa đạt') ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</div><button type="button" class="row-action delete" data-action="edit-domain-remove-period" data-period-index="${index}" aria-label="Xóa ${esc(period)}">${icon('trash')}</button></div>`).join('');
     $('#goal-dialog-note').value = goal?.note || '';
   }
 
@@ -421,7 +445,7 @@
     $('#goal-dialog-status').value = isPeriodEdit && goal ? goal.statuses?.[shortIndex] || 'Chưa đạt' : 'Chưa đạt';
     $('#goal-dialog-description').textContent = isPeriodEdit ? 'Chỉ cập nhật trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-period-field').hidden = !isPeriodEdit;
-    $('#goal-dialog-period-label').value = isPeriodEdit ? state.evaluationPeriods[shortIndex] || weekLabels[shortIndex] || '' : '';
+    $('#goal-dialog-period-label').value = isPeriodEdit ? periodsForChild(goal?.childId || state.selectedChildId)[shortIndex] || weekLabels[shortIndex] || '' : '';
     $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isSettingsDomainEdit ? 'Cập nhật tên và icon hiển thị của lĩnh vực.' : isPeriodEdit ? 'Cập nhật tên thời gian và trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-domain-name-field').hidden = !isDomainEdit && !isSettingsDomainEdit;
     $('#goal-domain-icon-field').hidden = !isSettingsDomainEdit;
@@ -509,6 +533,8 @@
       }
       if (action.dataset.action === 'edit-domain-add-short') { const list = $('#goal-dialog-short-list'); const index = list.children.length; list.insertAdjacentHTML('beforeend', `<div class="quick-short-row"><input data-edit-domain-short placeholder="Mục tiêu ngắn hạn ${index + 1}" /><button type="button" class="row-action delete" data-action="edit-domain-remove-short" data-short-index="${index}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></div>`); }
       if (action.dataset.action === 'edit-domain-remove-short') { const row = action.closest('.quick-short-row'); if ($('#goal-dialog-short-list').children.length > 1) row?.remove(); }
+      if (action.dataset.action === 'edit-domain-add-period') { const list = $('#goal-dialog-results-list'); const index = list.children.length; list.insertAdjacentHTML('beforeend', `<div class="quick-result-row"><input class="quick-period-label" data-edit-domain-period data-period-index="${index}" value="Tuần ${index + 1}" aria-label="Tên thời gian mới" /><div class="select-wrap"><select data-edit-domain-status data-period-index="${index}">${statuses.map((item) => `<option>${item}</option>`).join('')}</select>${icon('chevron')}</div><button type="button" class="row-action delete" data-action="edit-domain-remove-period" data-period-index="${index}" aria-label="Xóa kết quả theo tuần">${icon('trash')}</button></div>`); }
+      if (action.dataset.action === 'edit-domain-remove-period') { const list = $('#goal-dialog-results-list'); const row = action.closest('.quick-result-row'); if (list.children.length > 1) row?.remove(); }
     }
     if (event.target.id === 'calendar-schedule-popup') closeCalendarSchedulePopup();
     const noteButton = event.target.closest('.row-note button');
@@ -540,18 +566,19 @@
     if (action.dataset.action === 'edit-period') {
       const periodIndex = Number(action.dataset.periodIndex);
       const goalId = Number(action.dataset.goalId);
-      if (Number.isInteger(periodIndex) && state.evaluationPeriods[periodIndex] && goalId) openGoalModal('edit-period', goalId, periodIndex);
+      if (Number.isInteger(periodIndex) && goal && periodsForChild(goal.childId)[periodIndex] && goalId) openGoalModal('edit-period', goalId, periodIndex);
     }
     if (action.dataset.action === 'delete-period') {
       const periodIndex = Number(action.dataset.periodIndex);
-      const periodLabel = state.evaluationPeriods[periodIndex];
+      const currentPeriods = periodsForChild(state.selectedChildId);
+      const periodLabel = currentPeriods[periodIndex];
       if (Number.isInteger(periodIndex) && periodLabel) {
-        if (state.evaluationPeriods.length <= 1) {
+        if (currentPeriods.length <= 1) {
           window.alert('Cần giữ lại ít nhất một mốc thời gian.');
         } else if (window.confirm(`Xóa mốc thời gian "${periodLabel}"?`)) {
-          state.evaluationPeriods.splice(periodIndex, 1);
-          state.goals.forEach((item) => { item.statuses = (item.statuses || []).filter((_, index) => index !== periodIndex); });
-          weekLabels = state.evaluationPeriods;
+          const nextPeriods = currentPeriods.filter((_, index) => index !== periodIndex);
+          setPeriodsForChild(state.selectedChildId, nextPeriods);
+          state.goals.filter((item) => item.childId === state.selectedChildId).forEach((item) => { item.statuses = (item.statuses || []).filter((_, index) => index !== periodIndex); });
           persist();
           render();
         }
@@ -616,7 +643,7 @@
     if (mode !== 'edit-period' && mode !== 'domain' && mode !== 'edit-domain' && !text) { window.alert('Vui lòng nhập mục tiêu dài hạn.'); return; }
     if (mode === 'edit-period' && !periodLabel) { window.alert('Vui lòng nhập tên thời gian.'); return; }
     if (mode === 'domain') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
       state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
     } else if (mode === 'edit-domain-setting') {
       const previousDomain = $('#goal-dialog-domain-name').dataset.previousDomain || domainName;
@@ -636,31 +663,32 @@
       if (!domainGoal) { window.alert('Không tìm thấy lĩnh vực cần chỉnh sửa. Vui lòng đóng popup và mở lại.'); return; }
       if (!nextPeriodLabels.length || nextPeriodLabels.some((label) => !label) || new Set(normalizedLabels).size !== normalizedLabels.length) { window.alert('Tên thời gian theo tuần phải đầy đủ và không được trùng nhau.'); return; }
       const nextNote = $('#goal-dialog-note').value.trim();
-      state.evaluationPeriods = nextPeriodLabels;
-      weekLabels = state.evaluationPeriods;
-      state.goals.forEach((item) => { if (item.childId === state.selectedChildId && item.domain === previousDomain) { item.domain = domainName; item.longTerm = text; item.shortTerm = shortTerm; item.statuses = nextPeriodLabels.map((_, index) => nextStatuses[index] || item.statuses?.[index] || 'Chưa đạt'); item.note = nextNote; } });
+      const childId = domainGoal.childId || state.selectedChildId;
+      setPeriodsForChild(childId, nextPeriodLabels);
+      state.goals.forEach((item) => { if (item.childId === childId && item.domain === previousDomain) { item.domain = domainName; item.longTerm = text; item.shortTerm = shortTerm; item.statuses = nextPeriodLabels.map((_, index) => nextStatuses[index] || item.statuses?.[index] || 'Chưa đạt'); item.note = nextNote; } });
       state.domains = state.domains.map((item) => item === previousDomain ? domainName : item);
       domains = state.domains;
       if (previousDomain !== domainName) delete state.domainIcons[previousDomain];
       state.domainIcons[domainName] = state.domainIcons?.[domainName] || previousIcon;
     } else if (mode === 'long') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
     } else if (mode === 'edit-long') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.longTerm = text;
     } else if (mode === 'short') {
       const goal = state.goals.find((item) => item.id === Number($('#goal-dialog-parent').value)); if (goal) goal.shortTerm = [...(goal.shortTerm || []), text];
     } else if (mode === 'edit-short') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.shortTerm[shortIndex] = text;
-    } else if (mode === 'period' && !state.evaluationPeriods.includes(text)) {
-      state.evaluationPeriods.push(text);
-      state.goals.forEach((goal) => goal.statuses.push('Chưa đạt'));
-      weekLabels = state.evaluationPeriods;
+    } else if (mode === 'period' && !periodsForChild(state.selectedChildId).includes(text)) {
+      const nextPeriods = [...periodsForChild(state.selectedChildId), text];
+      setPeriodsForChild(state.selectedChildId, nextPeriods);
+      state.goals.filter((goal) => goal.childId === state.selectedChildId).forEach((goal) => goal.statuses.push('Chưa đạt'));
     } else if (mode === 'edit-period') {
       const goal = state.goals.find((item) => item.id === id);
+      const childId = goal?.childId || state.selectedChildId;
+      const childPeriods = periodsForChild(childId);
       if (goal && shortIndex >= 0) goal.statuses[shortIndex] = status;
-      if (shortIndex >= 0 && !state.evaluationPeriods.some((label, index) => index !== shortIndex && label.toLowerCase() === periodLabel.toLowerCase())) {
-        state.evaluationPeriods[shortIndex] = periodLabel;
-        weekLabels = state.evaluationPeriods;
+      if (shortIndex >= 0 && !childPeriods.some((label, index) => index !== shortIndex && label.toLowerCase() === periodLabel.toLowerCase())) {
+        setPeriodsForChild(childId, childPeriods.map((label, index) => index === shortIndex ? periodLabel : label));
       }
     }
     persist(); closeGoalModal(); render();
@@ -681,8 +709,8 @@
     if (goal) { goal.note = $('#note-text').value.trim(); persist(); closeNoteModal(); renderPlan(); }
   });
   document.addEventListener('submit', (event) => {
-    if (event.target.id === 'child-form') { event.preventDefault(); const id = Number($('#child-id').value); const teachingDays = [...document.querySelectorAll('[data-teaching-day]:checked')].map((input) => Number(input.value)).sort((a, b) => a - b); const teachingStartTime = $('#child-start-time').value; const teachingEndTime = $('#child-end-time').value; const scheduleError = $('#child-schedule-error'); if (teachingDays.length && (!teachingStartTime || !teachingEndTime)) { scheduleError.removeAttribute('hidden'); return; } scheduleError.setAttribute('hidden', ''); const data = { name: $('#child-name').value.trim(), birthday: birthdayDisplayValue($('#child-birthday').value.trim()), gender: $('#child-gender').value, note: $('#child-note').value.trim(), teachingDays, teachingStartTime, teachingEndTime, color: $('#child-color')?.value || scheduleColorOptions[0].value }; if (id) state.children = state.children.map((child) => child.id === id ? { ...data, id } : child); else { const newId = Math.max(0, ...state.children.map((child) => child.id)) + 1; state.children.push({ ...data, id: newId }); state.selectedChildId = newId; } persist(); closeChildModal(); render(); return; }
-    if (event.target.id === 'objective-form') { event.preventDefault(); const shortTerm = draftShortGoals.map((item) => item.trim()).filter(Boolean); if (!shortTerm.length || !$('#objective-long').value.trim()) return; const goal = { id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: Number($('#objective-child').value), domain: $('#objective-domain').value, longTerm: $('#objective-long').value.trim(), shortTerm, from: $('#objective-from').value, to: $('#objective-to').value, statuses: ['Manh nha', 'Manh nha', 'Chưa đạt', 'Chưa đạt'] }; state.goals.push(goal); state.selectedChildId = goal.childId; persist(); navigate('plan'); }
+    if (event.target.id === 'child-form') { event.preventDefault(); const id = Number($('#child-id').value); const teachingDays = [...document.querySelectorAll('[data-teaching-day]:checked')].map((input) => Number(input.value)).sort((a, b) => a - b); const teachingStartTime = $('#child-start-time').value; const teachingEndTime = $('#child-end-time').value; const scheduleError = $('#child-schedule-error'); if (teachingDays.length && (!teachingStartTime || !teachingEndTime)) { scheduleError.removeAttribute('hidden'); return; } scheduleError.setAttribute('hidden', ''); const data = { name: $('#child-name').value.trim(), birthday: birthdayDisplayValue($('#child-birthday').value.trim()), gender: $('#child-gender').value, note: $('#child-note').value.trim(), teachingDays, teachingStartTime, teachingEndTime, color: $('#child-color')?.value || scheduleColorOptions[0].value }; if (id) state.children = state.children.map((child) => child.id === id ? { ...data, id } : child); else { const newId = Math.max(0, ...state.children.map((child) => child.id)) + 1; state.children.push({ ...data, id: newId }); state.evaluationPeriodsByChild[String(newId)] = [...periodsForChild(state.selectedChildId)]; state.selectedChildId = newId; } persist(); closeChildModal(); render(); return; }
+    if (event.target.id === 'objective-form') { event.preventDefault(); const shortTerm = draftShortGoals.map((item) => item.trim()).filter(Boolean); if (!shortTerm.length || !$('#objective-long').value.trim()) return; const childId = Number($('#objective-child').value); const goal = { id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId, domain: $('#objective-domain').value, longTerm: $('#objective-long').value.trim(), shortTerm, from: $('#objective-from').value, to: $('#objective-to').value, statuses: periodsForChild(childId).map((_, index) => ['Manh nha', 'Manh nha', 'Chưa đạt', 'Chưa đạt'][index] || 'Chưa đạt') }; state.goals.push(goal); state.selectedChildId = goal.childId; persist(); navigate('plan'); }
   });
   function render() { document.body.classList.toggle('share-mode', shareMode); if (shareMode) { renderSharePage(); return; } renderOverview(); renderPlan(); renderChildren(); renderObjective(); renderSettings(); navigate(state.view); }
   applyTheme();
@@ -693,6 +721,7 @@
         state.children = [];
         state.goals = [];
         state.evaluationPeriods = [...weekLabels];
+        state.evaluationPeriodsByChild = {};
         state.selectedChildId = 0;
         localStorage.setItem(storageKey, JSON.stringify(persistentData()));
         render();
@@ -704,8 +733,11 @@
       });
       if (Array.isArray(data.children)) state.children = data.children;
       if (Array.isArray(data.goals)) state.goals = data.goals;
-      if (Array.isArray(state.evaluationPeriods)) weekLabels = state.evaluationPeriods;
+      state.evaluationPeriods = normalizePeriods(state.evaluationPeriods, weekLabels);
+      const savedPeriodsByChild = state.evaluationPeriodsByChild && typeof state.evaluationPeriodsByChild === 'object' ? state.evaluationPeriodsByChild : {};
+      state.evaluationPeriodsByChild = Object.fromEntries(state.children.map((child) => [String(child.id), normalizePeriods(savedPeriodsByChild[String(child.id)], state.evaluationPeriods)]));
       state.selectedChildId = state.children[0]?.id || 0;
+      weekLabels = periodsForChild(state.selectedChildId);
       localStorage.setItem(storageKey, JSON.stringify(persistentData()));
       render();
     }).catch((error) => {
