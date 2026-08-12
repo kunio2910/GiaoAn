@@ -200,7 +200,7 @@
     if (!child) { $('#screen-overview').innerHTML = `<div class="empty-state"><h3>Chưa có dữ liệu tổng quan</h3><p>Vào Hồ sơ trẻ để thêm hồ sơ đầu tiên.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const goals = state.goals.filter((goal) => goal.childId === child.id);
     const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('file')}Xem kế hoạch`, 'view-plan', true)}</div>`;
-    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}${overviewCalendarMarkup()}<div class="overview-toolbar">${childChoiceButtons('Đang xem tổng quan của', 'overview')}</div>${childSummaryMarkup(child)}<div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div>${renderGoalsTable(goals, true)}`;
+    $('#screen-overview').innerHTML = `${header('Tổng quan', 'Theo dõi nhanh kế hoạch giáo dục của các trẻ', actions)}${overviewCalendarMarkup()}<div class="overview-toolbar">${childChoiceButtons('Đang xem tổng quan của', 'overview')}</div>${childSummaryMarkup(child)}<section class="overview-goals-panel"><div class="section-title-row"><div><h2>${icon('overview')}Mục tiêu đang theo dõi</h2><p>Thông tin chỉ hiển thị; chỉnh sửa tại Kế hoạch giáo dục.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt</span><span><i class="dot yellow"></i>Manh nha</span><span><i class="dot gray"></i>Chưa đạt</span></div></div>${renderGoalsTable(goals, true)}</section>`;
   }
 
   function renderOverviewLegacy() {
@@ -378,17 +378,18 @@
     const goal = state.goals.find((item) => item.id === Number(goalId));
     const currentGoals = state.goals.filter((item) => item.childId === state.selectedChildId);
     const isShort = mode === 'short' || mode === 'edit-short';
-    const isEdit = mode === 'edit-long' || mode === 'edit-short' || mode === 'edit-period' || mode === 'edit-domain';
+    const isEdit = mode === 'edit-long' || mode === 'edit-short' || mode === 'edit-period' || mode === 'edit-domain' || mode === 'edit-domain-setting';
     const isDomainEdit = mode === 'edit-domain';
+    const isSettingsDomainEdit = mode === 'edit-domain-setting';
     const isPeriodEdit = mode === 'edit-period';
-    const titles = { domain: 'Thêm lĩnh vực', long: 'Thêm mục tiêu dài hạn', short: 'Thêm mục tiêu ngắn hạn', 'edit-domain': 'Chỉnh sửa lĩnh vực', 'edit-long': 'Chỉnh sửa mục tiêu dài hạn', 'edit-short': 'Chỉnh sửa mục tiêu ngắn hạn', period: 'Thêm thời gian kết quả' };
+    const titles = { domain: 'Thêm lĩnh vực', long: 'Thêm mục tiêu dài hạn', short: 'Thêm mục tiêu ngắn hạn', 'edit-domain': 'Chỉnh sửa lĩnh vực', 'edit-domain-setting': 'Chỉnh sửa lĩnh vực', 'edit-long': 'Chỉnh sửa mục tiêu dài hạn', 'edit-short': 'Chỉnh sửa mục tiêu ngắn hạn', period: 'Thêm thời gian kết quả' };
     const labels = { domain: 'Tên lĩnh vực', long: 'Mục tiêu dài hạn', short: 'Mục tiêu ngắn hạn', 'edit-long': 'Mục tiêu dài hạn', 'edit-short': 'Mục tiêu ngắn hạn', period: 'Tên thời gian đánh giá' };
     titles['edit-period'] = 'Chỉnh sửa kết quả theo tuần';
     labels['edit-period'] = 'Trạng thái kết quả';
     labels.domain = 'Lĩnh vực';
     labels['edit-period'] = 'Tên thời gian';
     $('#goal-dialog-title').textContent = titles[mode];
-    $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực và icon đã được cấu hình trong Cài đặt.' : isDomainEdit ? 'Cập nhật nhanh toàn bộ thông tin của lĩnh vực này.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
+    $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isSettingsDomainEdit ? 'Cập nhật tên và icon hiển thị của lĩnh vực.' : isDomainEdit ? 'Cập nhật nhanh toàn bộ thông tin của lĩnh vực này.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-dialog-mode').value = mode;
     $('#goal-dialog-id').value = goal?.id || '';
     $('#goal-dialog-short-index').value = shortIndex ?? '';
@@ -403,23 +404,23 @@
     $('#goal-dialog-long-options').innerHTML = longTermOptions.map((option) => `<option value="${esc(option)}"></option>`).join('');
     $('#goal-dialog-icon-value').value = state.domainIcons?.[configuredDomain] || defaultDomainIcons[configuredDomain] || domainIconOptions[0].value;
     $('#goal-dialog-icon-picker').innerHTML = domainIconPicker($('#goal-dialog-icon-value').value);
-    if (isDomainEdit) renderDomainEditFields(goal, domainNameOverride);
+    if (isDomainEdit || isSettingsDomainEdit) renderDomainEditFields(goal, domainNameOverride);
     $('#goal-dialog-text').value = mode === 'edit-short' && goal ? goal.shortTerm?.[shortIndex] || '' : mode === 'edit-long' ? goal?.longTerm || '' : '';
     $('#goal-dialog-status').value = isPeriodEdit && goal ? goal.statuses?.[shortIndex] || 'Chưa đạt' : 'Chưa đạt';
     $('#goal-dialog-description').textContent = isPeriodEdit ? 'Chỉ cập nhật trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-period-field').hidden = !isPeriodEdit;
     $('#goal-dialog-period-label').value = isPeriodEdit ? state.evaluationPeriods[shortIndex] || weekLabels[shortIndex] || '' : '';
-    $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isPeriodEdit ? 'Cập nhật tên thời gian và trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
-    $('#goal-domain-name-field').hidden = !isDomainEdit;
-    $('#goal-domain-icon-field').hidden = !isDomainEdit && mode !== 'domain';
+    $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isSettingsDomainEdit ? 'Cập nhật tên và icon hiển thị của lĩnh vực.' : isPeriodEdit ? 'Cập nhật tên thời gian và trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
+    $('#goal-domain-name-field').hidden = !isDomainEdit && !isSettingsDomainEdit;
+    $('#goal-domain-icon-field').hidden = !isSettingsDomainEdit;
     $('#goal-edit-long-field').hidden = !isDomainEdit;
     $('#goal-edit-short-field').hidden = !isDomainEdit;
     $('#goal-edit-results-field').hidden = !isDomainEdit;
     $('#goal-edit-note-field').hidden = !isDomainEdit;
-    $('#goal-dialog-domain').closest('#goal-domain-field').hidden = isDomainEdit || !(mode === 'domain' || mode === 'long');
-    $('#goal-parent-field').hidden = isDomainEdit || !isShort || isEdit;
-    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain' || isDomainEdit;
-    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain';
+    $('#goal-dialog-domain').closest('#goal-domain-field').hidden = isDomainEdit || isSettingsDomainEdit || !(mode === 'domain' || mode === 'long');
+    $('#goal-parent-field').hidden = isDomainEdit || isSettingsDomainEdit || !isShort || isEdit;
+    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain' || isDomainEdit || isSettingsDomainEdit;
+    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain' && !isSettingsDomainEdit;
     $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
     if (isPeriodEdit) $('#goal-domain-field').hidden = true;
@@ -427,10 +428,10 @@
     const parentSelect = $('#goal-dialog-parent');
     parentSelect.innerHTML = currentGoals.map((item) => `<option value="${item.id}">${esc(item.longTerm || 'Chưa nhập mục tiêu')}</option>`).join('');
     if (goal && isEdit) parentSelect.value = goal.id;
-    $('#goal-modal').classList.toggle('small-edit-modal', isEdit && !isDomainEdit);
-    $('#goal-modal').classList.toggle('domain-edit-modal', isDomainEdit || mode === 'domain');
+    $('#goal-modal').classList.toggle('small-edit-modal', isEdit && !isDomainEdit && !isSettingsDomainEdit);
+    $('#goal-modal').classList.toggle('domain-edit-modal', isDomainEdit || isSettingsDomainEdit || mode === 'domain');
     $('#goal-modal').removeAttribute('hidden');
-    (isPeriodEdit ? $('#goal-dialog-period-label') : mode === 'domain' ? $('#goal-dialog-domain') : $('#goal-dialog-text')).focus();
+    (isPeriodEdit ? $('#goal-dialog-period-label') : mode === 'domain' ? $('#goal-dialog-domain') : isDomainEdit || isSettingsDomainEdit ? $('#goal-dialog-domain-name') : $('#goal-dialog-text')).focus();
   }
   function closeGoalModal() { $('#goal-modal').classList.remove('small-edit-modal', 'domain-edit-modal'); $('#goal-modal').setAttribute('hidden', ''); }
 
@@ -478,7 +479,7 @@
       if (action.dataset.action === 'edit-domain-setting') {
         const domainName = action.dataset.domainSettingName;
         const goal = state.goals.find((item) => item.childId === state.selectedChildId && item.domain === domainName) || state.goals.find((item) => item.domain === domainName);
-        openGoalModal('edit-domain', goal?.id || 0, undefined, domainName);
+        openGoalModal('edit-domain-setting', goal?.id || 0, undefined, domainName);
       }
       if (action.dataset.action === 'delete-domain-setting') {
         const domainName = action.dataset.domainSettingName;
@@ -590,7 +591,7 @@
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();
     const mode = $('#goal-dialog-mode').value;
-    const text = (mode === 'edit-domain' ? $('#goal-dialog-edit-long').value : $('#goal-dialog-text').value).trim();
+    const text = (mode === 'edit-domain' ? $('#goal-dialog-edit-long').value : mode === 'edit-domain-setting' ? $('#goal-dialog-domain-name').value : $('#goal-dialog-text').value).trim();
     const selectedDomain = $('#goal-dialog-domain').value.trim();
     const domainName = $('#goal-dialog-domain-name').value.trim();
     const selectedDomainIcon = $('#goal-dialog-icon-value').value || domainIconOptions[0].value;
@@ -598,12 +599,19 @@
     const status = $('#goal-dialog-status').value;
     const id = Number($('#goal-dialog-id').value);
     const shortIndex = Number($('#goal-dialog-short-index').value);
-    if ((mode === 'domain' && !selectedDomain) || (mode === 'edit-domain' && !domainName)) return;
+    if ((mode === 'domain' && !selectedDomain) || ((mode === 'edit-domain' || mode === 'edit-domain-setting') && !domainName)) return;
     if (mode !== 'edit-period' && mode !== 'domain' && mode !== 'edit-domain' && !text) return;
     if (mode === 'edit-period' && !periodLabel) return;
     if (mode === 'domain') {
       state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
-      state.domainIcons[selectedDomain] = selectedDomainIcon;
+      state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
+    } else if (mode === 'edit-domain-setting') {
+      const previousDomain = $('#goal-dialog-domain-name').dataset.previousDomain || domainName;
+      state.domains = state.domains.map((item) => item === previousDomain ? domainName : item);
+      domains = state.domains;
+      state.goals.forEach((item) => { if (item.domain === previousDomain) item.domain = domainName; });
+      if (previousDomain !== domainName) delete state.domainIcons[previousDomain];
+      state.domainIcons[domainName] = selectedDomainIcon;
     } else if (mode === 'edit-domain') {
       const domainGoal = state.goals.find((item) => item.id === id);
       const previousDomain = domainGoal?.domain || $('#goal-dialog-domain-name').dataset.previousDomain || selectedDomain;
