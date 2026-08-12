@@ -154,16 +154,15 @@ function Logo() {
   return <div className="brand"><div className="brand-mark" aria-hidden="true">{Array.from({ length: 9 }, (_, index) => <i key={index} className={`bubble b${index + 1}`} />)}</div><span>KẾ HOẠCH<br />GIÁO DỤC</span></div>;
 }
 
-const navItems: { label: string; icon: "overview" | "plan" | "children" | "settings" | "target"; view: View; hidden?: boolean }[] = [
+const navItems: { label: string; icon: "overview" | "plan" | "children" | "settings" | "target"; view: View }[] = [
   { label: "Tổng quan", icon: "overview", view: "overview" },
-  { label: "Kế hoạch giáo dục", icon: "plan", view: "plan", hidden: true },
   { label: "Kế hoạch giáo dục", icon: "plan", view: "plan-new" },
   { label: "Hồ sơ trẻ", icon: "children", view: "children" },
   { label: "Cài đặt", icon: "settings", view: "settings" },
 ];
 
 function Sidebar({ active, onChange, darkMode, onToggleTheme }: { active: View; onChange: (view: View) => void; darkMode: boolean; onToggleTheme: () => void }) {
-  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.filter((item) => !item.hidden).map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label={darkMode ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}><Icon name={darkMode ? "sun" : "moon"} size={18} /><span>{darkMode ? "Giao diện sáng" : "Giao diện tối"}</span></button><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
+  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label={darkMode ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}><Icon name={darkMode ? "sun" : "moon"} size={18} /><span>{darkMode ? "Giao diện sáng" : "Giao diện tối"}</span></button><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
 }
 
 function Header({ title, subtitle, actionLabel, actionIcon = "plus", actionPrimary = true, onAction, secondaryActionLabel, secondaryActionIcon = "save", secondaryActionPrimary = false, onSecondaryAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; actionIcon?: "plus" | "file" | "save"; actionPrimary?: boolean; onAction?: () => void; secondaryActionLabel?: string; secondaryActionIcon?: "plus" | "file" | "save"; secondaryActionPrimary?: boolean; onSecondaryAction?: () => void; onBack?: () => void }) {
@@ -299,7 +298,7 @@ function OverviewView({ childList, selectedChildId, onSelectChild, goals, onStat
 }
 
 function SidebarV2({ active, onChange }: { active: View; onChange: (view: View) => void }) {
-  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.filter((item) => !item.hidden).map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
+  return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
 }
 
 /* eslint-disable jsx-a11y/no-autofocus */
@@ -664,7 +663,8 @@ function SettingsView({ darkMode, onToggleTheme, domains = DOMAIN_OPTIONS, domai
 }
 
 export default function Home() {
-  const [view, setView] = useState<View>("plan-new");
+  const [view, setViewRaw] = useState<View>("plan-new");
+  const setView = (next: View) => setViewRaw(next === "plan" ? "plan-new" : next);
   const [shareChildSlug] = useState<string | null>(() => sharedChildSlugFromUrl());
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>([]);
