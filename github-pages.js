@@ -127,7 +127,7 @@
     const counts = goals.reduce((result, goal) => { result[goal.domain] = (result[goal.domain] || 0) + 1; return result; }, {});
     const rows = goals.map((goal, index) => {
       const first = index === 0 || goals[index - 1].domain !== goal.domain;
-      const domainCell = first ? `<td class="domain-cell" rowspan="${counts[goal.domain]}"><span class="domain-icon">${icon('target')}</span><strong>${esc(goal.domain || 'Chưa phân loại')}</strong></td>` : '';
+      const domainCell = first ? `<td class="domain-cell" rowspan="${counts[goal.domain]}"><span class="domain-icon">${icon(domainIconOption(state.domainIcons?.[goal.domain] || defaultDomainIcons[goal.domain]).value)}</span><strong>${esc(goal.domain || 'Chưa phân loại')}</strong></td>` : '';
       const longActions = readOnly ? '' : `<div class="goal-inline-actions"><button type="button" class="goal-edit-button" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button type="button" class="goal-delete-button" data-action="delete-goal" data-goal-id="${goal.id}">${icon('trash')}Xóa</button></div>`;
       const shortItems = goal.shortTerm?.length ? goal.shortTerm.map((item, shortIndex) => `<li><span>${esc(item || 'Chưa nhập mục tiêu')}</span>${readOnly ? '' : `<span class="goal-inline-actions"><button type="button" class="goal-edit-button" data-action="edit-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}">${icon('edit')}Sửa</button><button type="button" class="goal-delete-button" data-action="delete-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}">${icon('trash')}Xóa</button></span>`}</li>`).join('') : `<li class="cell-placeholder">Chưa có mục tiêu ngắn hạn</li>`;
       const note = readOnly ? `<span class="note-icon-display">${icon('note')}</span>${goal.note ? `<span class="note-content" title="${esc(goal.note)}">${esc(goal.note)}</span>` : '<span class="cell-placeholder">Chưa có ghi chú</span>'}` : `<button type="button" aria-label="Ghi chú mục tiêu" data-action="open-note" data-goal-id="${goal.id}">${icon('note')}</button>`;
@@ -322,7 +322,7 @@
   }
 
   function renderSettings() {
-    const items = domains.map((domain) => `<div class="domain-settings-item">${domainIconBadge(state.domainIcons?.[domain] || defaultDomainIcons[domain])}<span>${esc(domain)}</span><label class="domain-settings-item-picker"><span class="sr-only">Đổi icon ${esc(domain)}</span><select data-domain-setting="${esc(domain)}">${domainIconOptions.map((option) => `<option value="${option.value}" ${(state.domainIcons?.[domain] || defaultDomainIcons[domain]) === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}</select>${icon('chevron')}</label><button type="button" class="domain-settings-action edit" data-action="edit-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Sửa ${esc(domain)}">${icon('edit')}</button><button type="button" class="domain-settings-action delete" data-action="delete-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Xóa ${esc(domain)}">${icon('trash')}</button></div>`).join('');
+    const items = domains.map((domain) => `<div class="domain-settings-item">${domainIconBadge(state.domainIcons?.[domain] || defaultDomainIcons[domain])}<span>${esc(domain)}</span><button type="button" class="domain-settings-action edit" data-action="edit-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Sửa ${esc(domain)}">${icon('edit')}</button><button type="button" class="domain-settings-action delete" data-action="delete-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Xóa ${esc(domain)}">${icon('trash')}</button></div>`).join('');
     $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input type="checkbox" data-theme-toggle aria-label="Giao diện tối" /></label></div><div class="settings-card domain-settings-section"><div class="settings-heading"><div class="settings-icon">${icon('target')}</div><div><h2>Quản lý lĩnh vực</h2><p>Đặt tên và chọn icon riêng cho từng lĩnh vực phát triển.</p></div></div><form id="domain-settings-form" class="domain-settings-form"><label class="field"><span>Tên lĩnh vực mới<em>*</em></span><input id="new-domain-name" required placeholder="Ví dụ: Kỹ năng tự phục vụ" /></label><label class="field domain-settings-icon-field"><span>Icon lĩnh vực</span><div id="new-domain-icon-picker">${domainIconPicker(domainIconOptions[0].value, 'select-new-domain-icon')}</div><input type="hidden" id="new-domain-icon" value="${domainIconOptions[0].value}" /></label><button type="submit" class="button primary">${icon('plus')}Thêm lĩnh vực</button></form><div class="domain-settings-list" aria-live="polite">${items || '<span class="cell-placeholder">Chưa có lĩnh vực.</span>'}</div></div>`;
   }
 
@@ -342,6 +342,7 @@
     const parent = $('#goal-parent-field');
     if (!$('#goal-domain-name-field')) { const field = document.createElement('label'); field.className = 'field'; field.id = 'goal-domain-name-field'; field.innerHTML = '<span>Tên lĩnh vực<em>*</em></span><input id="goal-dialog-domain-name" placeholder="Nhập tên lĩnh vực" />'; parent.before(field); }
     if (!$('#goal-domain-icon-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-domain-icon-field'; field.innerHTML = '<span>Icon lĩnh vực<em>*</em></span><div id="goal-dialog-icon-picker"></div><input type="hidden" id="goal-dialog-icon-value" />'; parent.before(field); }
+    if (!$('#goal-edit-long-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-long-field'; field.innerHTML = '<span>Mục tiêu dài hạn</span><input id="goal-dialog-edit-long" list="goal-dialog-long-options" placeholder="Chọn hoặc nhập mục tiêu dài hạn..." /><datalist id="goal-dialog-long-options"></datalist>'; parent.before(field); }
     if (!$('#goal-edit-short-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-short-field'; field.innerHTML = '<span>Mục tiêu ngắn hạn</span><div id="goal-dialog-short-list" class="quick-short-list"></div><button type="button" class="outline-button compact quick-add-button" data-action="edit-domain-add-short"><svg><use href="#icon-plus"></use></svg>Thêm mục tiêu ngắn hạn</button>'; parent.before(field); }
     if (!$('#goal-edit-results-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-results-field'; field.innerHTML = '<span>Kết quả theo tuần</span><div id="goal-dialog-results-list" class="quick-results-list"></div>'; parent.before(field); }
     if (!$('#goal-edit-note-field')) { const field = document.createElement('label'); field.className = 'field full'; field.id = 'goal-edit-note-field'; field.innerHTML = '<span>Ghi chú</span><textarea id="goal-dialog-note" placeholder="Nhập ghi chú..."></textarea>'; parent.before(field); }
@@ -353,9 +354,9 @@
     $('#goal-dialog-domain-name').value = currentDomain;
     $('#goal-dialog-icon-value').value = state.domainIcons?.[currentDomain] || defaultDomainIcons[currentDomain] || domainIconOptions[0].value;
     $('#goal-dialog-icon-picker').innerHTML = domainIconPicker($('#goal-dialog-icon-value').value);
-    $('#goal-dialog-text').value = goal?.longTerm || '';
+    $('#goal-dialog-edit-long').value = goal?.longTerm || '';
     $('#goal-dialog-short-list').innerHTML = (goal?.shortTerm?.length ? goal.shortTerm : ['']).map((value, index) => `<div class="quick-short-row"><input data-edit-domain-short value="${esc(value)}" placeholder="Mục tiêu ngắn hạn ${index + 1}" /><button type="button" class="row-action delete" data-action="edit-domain-remove-short" data-short-index="${index}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></div>`).join('');
-    $('#goal-dialog-results-list').innerHTML = periods.map((period, index) => `<div class="quick-result-row"><span>${esc(period)}</span><div class="select-wrap"><select data-edit-domain-status data-period-index="${index}">${statuses.map((item) => `<option ${item === (goal?.statuses?.[index] || 'Chưa đạt') ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</div></div>`).join('');
+    $('#goal-dialog-results-list').innerHTML = periods.map((period, index) => `<div class="quick-result-row"><input class="quick-period-label" data-edit-domain-period data-period-index="${index}" value="${esc(period)}" aria-label="Tên thời gian ${esc(period)}" /><div class="select-wrap"><select data-edit-domain-status data-period-index="${index}">${statuses.map((item) => `<option ${item === (goal?.statuses?.[index] || 'Chưa đạt') ? 'selected' : ''}>${item}</option>`).join('')}</select>${icon('chevron')}</div></div>`).join('');
     $('#goal-dialog-note').value = goal?.note || '';
   }
 
@@ -398,10 +399,12 @@
     $('#goal-dialog-domain').value = configuredDomain;
     $('#goal-dialog-domain-name').value = configuredDomain;
     $('#goal-dialog-domain-name').dataset.previousDomain = configuredDomain;
+    const longTermOptions = [...new Set(state.goals.filter((item) => item.domain === configuredDomain).map((item) => item.longTerm?.trim()).filter(Boolean))];
+    $('#goal-dialog-long-options').innerHTML = longTermOptions.map((option) => `<option value="${esc(option)}"></option>`).join('');
     $('#goal-dialog-icon-value').value = state.domainIcons?.[configuredDomain] || defaultDomainIcons[configuredDomain] || domainIconOptions[0].value;
     $('#goal-dialog-icon-picker').innerHTML = domainIconPicker($('#goal-dialog-icon-value').value);
     if (isDomainEdit) renderDomainEditFields(goal, domainNameOverride);
-    $('#goal-dialog-text').value = isDomainEdit && goal ? goal.longTerm || '' : mode === 'edit-short' && goal ? goal.shortTerm?.[shortIndex] || '' : mode === 'edit-long' ? goal?.longTerm || '' : '';
+    $('#goal-dialog-text').value = mode === 'edit-short' && goal ? goal.shortTerm?.[shortIndex] || '' : mode === 'edit-long' ? goal?.longTerm || '' : '';
     $('#goal-dialog-status').value = isPeriodEdit && goal ? goal.statuses?.[shortIndex] || 'Chưa đạt' : 'Chưa đạt';
     $('#goal-dialog-description').textContent = isPeriodEdit ? 'Chỉ cập nhật trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-period-field').hidden = !isPeriodEdit;
@@ -409,12 +412,13 @@
     $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isPeriodEdit ? 'Cập nhật tên thời gian và trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-domain-name-field').hidden = !isDomainEdit;
     $('#goal-domain-icon-field').hidden = !isDomainEdit && mode !== 'domain';
+    $('#goal-edit-long-field').hidden = !isDomainEdit;
     $('#goal-edit-short-field').hidden = !isDomainEdit;
     $('#goal-edit-results-field').hidden = !isDomainEdit;
     $('#goal-edit-note-field').hidden = !isDomainEdit;
     $('#goal-dialog-domain').closest('#goal-domain-field').hidden = isDomainEdit || !(mode === 'domain' || mode === 'long');
     $('#goal-parent-field').hidden = isDomainEdit || !isShort || isEdit;
-    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain';
+    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain' || isDomainEdit;
     $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain';
     $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
@@ -576,7 +580,7 @@
     const value = input.value.trim();
     if (!value || domains.some((domain) => domain.toLowerCase() === value.toLowerCase())) return;
     domains.push(value);
-    state.domainIcons[value] = $('#new-domain-icon').value || domainIconOptions[0].value;
+    state.domainIcons[value] = $('#new-domain-icon').value || $('#new-domain-icon-picker .domain-icon-choice.selected')?.dataset.domainIcon || domainIconOptions[0].value;
     state.domains = [...domains];
     persist();
     renderSettings();
@@ -586,7 +590,7 @@
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();
     const mode = $('#goal-dialog-mode').value;
-    const text = $('#goal-dialog-text').value.trim();
+    const text = (mode === 'edit-domain' ? $('#goal-dialog-edit-long').value : $('#goal-dialog-text').value).trim();
     const selectedDomain = $('#goal-dialog-domain').value.trim();
     const domainName = $('#goal-dialog-domain-name').value.trim();
     const selectedDomainIcon = $('#goal-dialog-icon-value').value || domainIconOptions[0].value;
@@ -605,8 +609,13 @@
       const previousDomain = domainGoal?.domain || $('#goal-dialog-domain-name').dataset.previousDomain || selectedDomain;
       const shortTerm = [...document.querySelectorAll('[data-edit-domain-short]')].map((input) => input.value.trim()).filter(Boolean);
       const nextStatuses = [...document.querySelectorAll('[data-edit-domain-status]')].map((select) => select.value);
+      const nextPeriodLabels = [...document.querySelectorAll('[data-edit-domain-period]')].map((input) => input.value.trim());
+      const normalizedLabels = nextPeriodLabels.map((label) => label.toLocaleLowerCase());
+      if (nextPeriodLabels.some((label) => !label) || new Set(normalizedLabels).size !== normalizedLabels.length) { window.alert('Tên thời gian theo tuần phải đầy đủ và không được trùng nhau.'); return; }
       const nextNote = $('#goal-dialog-note').value.trim();
-      state.goals.forEach((item) => { if (item.childId === state.selectedChildId && item.domain === previousDomain) { item.domain = domainName; item.longTerm = text; item.shortTerm = shortTerm; item.statuses = nextStatuses; item.note = nextNote; } });
+      state.evaluationPeriods = nextPeriodLabels;
+      weekLabels = state.evaluationPeriods;
+      state.goals.forEach((item) => { if (item.childId === state.selectedChildId && item.domain === previousDomain) { item.domain = domainName; item.longTerm = text; item.shortTerm = shortTerm; item.statuses = nextPeriodLabels.map((_, index) => nextStatuses[index] || item.statuses?.[index] || 'Chưa đạt'); item.note = nextNote; } });
       state.domains = state.domains.map((item) => item === previousDomain ? domainName : item);
       domains = state.domains;
       if (previousDomain !== domainName) delete state.domainIcons[previousDomain];
