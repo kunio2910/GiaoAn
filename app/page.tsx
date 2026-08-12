@@ -113,43 +113,9 @@ function buildEvaluationPeriodsByChild(children: Child[], value: unknown, fallba
   }, {});
 }
 
-const initialChildren: Child[] = [
-  { id: 1, name: "Nguyễn Khánh Linh", birthday: "07/07/2021", gender: "Nữ", note: "Thích hoạt động có âm nhạc." },
-  { id: 2, name: "Trần Minh Anh", birthday: "18/03/2021", gender: "Nam", note: "Cần nhắc nhẹ khi chuyển hoạt động." },
-];
-
-const initialGoals: Goal[] = [
-  {
-    id: 1,
-    childId: 1,
-    domain: "Tương tác xã hội",
-    longTerm: "Duy trì tương tác với giáo viên 5–10 phút",
-    shortTerm: ["Ngồi tại bàn 2–3 phút.", "Ngồi học 5 phút.", "Duy trì hoạt động 10 phút."],
-    from: "01/07/2026",
-    to: "30/08/2026",
-    statuses: ["Manh nha", "Đạt", "Manh nha", "Chưa đạt"],
-  },
-  {
-    id: 2,
-    childId: 1,
-    domain: "Giao tiếp",
-    longTerm: "Tăng giao tiếp bằng mắt khi được gọi tên",
-    shortTerm: ["Nhìn mặt giáo viên khi được gọi tên.", "Duy trì giao tiếp mắt 2–3 giây."],
-    from: "01/07/2026",
-    to: "30/08/2026",
-    statuses: ["Manh nha", "Manh nha", "Đạt", "Đạt"],
-  },
-  {
-    id: 3,
-    childId: 2,
-    domain: "Chú ý chung",
-    longTerm: "Nhìn theo người lớn và đồ vật được chỉ dẫn",
-    shortTerm: ["Nhìn theo khi cô chỉ vào đồ vật gần.", "Luân phiên nhìn người và đồ vật 2–3 lần."],
-    from: "01/07/2026",
-    to: "30/08/2026",
-    statuses: ["Chưa đạt", "Manh nha", "Đạt", "Đạt"],
-  },
-];
+// Dữ liệu được tải từ Google Sheets/local storage; không khởi tạo trẻ hoặc mục tiêu mẫu.
+const initialChildren: Child[] = [];
+const initialGoals: Goal[] = [];
 
 function Icon({ name, size = 20 }: { name: "overview" | "plan" | "children" | "settings" | "target" | "group" | "eye" | "note" | "chevron" | "plus" | "edit" | "trash" | "calendar" | "user" | "save" | "back" | "file" | "share" | "moon" | "sun" | "heart" | "star" | "puzzle" | "music" | "brain" | "hand"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
@@ -200,8 +166,8 @@ function Sidebar({ active, onChange, darkMode, onToggleTheme }: { active: View; 
   return <aside className="sidebar"><Logo /><nav className="side-nav" aria-label="Điều hướng chính">{navItems.filter((item) => !item.hidden).map((item) => <button key={item.view} type="button" className={`nav-item ${active === item.view ? "active" : ""}`} onClick={() => onChange(item.view)}><span className="nav-icon"><Icon name={item.icon} size={19} /></span><span>{item.label}</span></button>)}</nav><button className="theme-toggle" type="button" onClick={onToggleTheme} aria-label={darkMode ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}><Icon name={darkMode ? "sun" : "moon"} size={18} /><span>{darkMode ? "Giao diện sáng" : "Giao diện tối"}</span></button><div className="sidebar-art" aria-hidden="true" /><div className="profile-card"><div className="teacher-avatar">VK</div><div><strong>Nguyễn Thị Vành Khuyên</strong><small>Người lập kế hoạch</small></div><button className="logout" type="button">Đăng xuất</button></div></aside>;
 }
 
-function Header({ title, subtitle, actionLabel, actionIcon = "plus", onAction, secondaryActionLabel, secondaryActionIcon = "save", onSecondaryAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; actionIcon?: "plus" | "file" | "save"; onAction?: () => void; secondaryActionLabel?: string; secondaryActionIcon?: "plus" | "file" | "save"; onSecondaryAction?: () => void; onBack?: () => void }) {
-  return <header className="topbar"><div className="topbar-title">{onBack && <button className="back-button" type="button" onClick={onBack} aria-label="Quay lại"><Icon name="back" size={24} /></button>}<div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div></div><div className="topbar-actions"><div className="date-pill"><span>30/06/2026</span><Icon name="calendar" size={17} /></div>{secondaryActionLabel && <button className="button" type="button" onClick={onSecondaryAction}><Icon name={secondaryActionIcon} size={17} />{secondaryActionLabel}</button>}{actionLabel && <button className="button primary" type="button" onClick={onAction}><Icon name={actionIcon} size={17} />{actionLabel}</button>}</div></header>;
+function Header({ title, subtitle, actionLabel, actionIcon = "plus", actionPrimary = true, onAction, secondaryActionLabel, secondaryActionIcon = "save", secondaryActionPrimary = false, onSecondaryAction, onBack }: { title: string; subtitle?: string; actionLabel?: string; actionIcon?: "plus" | "file" | "save"; actionPrimary?: boolean; onAction?: () => void; secondaryActionLabel?: string; secondaryActionIcon?: "plus" | "file" | "save"; secondaryActionPrimary?: boolean; onSecondaryAction?: () => void; onBack?: () => void }) {
+  return <header className="topbar"><div className="topbar-title">{onBack && <button className="back-button" type="button" onClick={onBack} aria-label="Quay lại"><Icon name="back" size={24} /></button>}<div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div></div><div className="topbar-actions"><div className="date-pill"><span>30/06/2026</span><Icon name="calendar" size={17} /></div>{secondaryActionLabel && <button className={`button${secondaryActionPrimary ? " primary" : ""}`} type="button" onClick={onSecondaryAction}><Icon name={secondaryActionIcon} size={17} />{secondaryActionLabel}</button>}{actionLabel && <button className={`button${actionPrimary ? " primary" : ""}`} type="button" onClick={onAction}><Icon name={actionIcon} size={17} />{actionLabel}</button>}</div></header>;
 }
 
 function SelectField({ label, value, onChange, options, required = false }: { label: string; value: string; onChange: (value: string) => void; options: string[]; required?: boolean }) {
@@ -583,9 +549,10 @@ function PlanNewView({ childList, selectedChildId, onSelectChild, goals, domains
     const matchesSearch = !search.trim() || `${domain} ${domainGoals.map((goal) => `${goal.longTerm} ${goal.shortTerm.join(" ")}`).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase());
     return matchesFilter && matchesSearch;
   });
-  if (!child) return <div className="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p></div>;
+  const planHeader = <Header title="Kế hoạch giáo dục" subtitle="Bố cục mới · mục tiêu được tách riêng theo từng trẻ" secondaryActionLabel="Lưu" secondaryActionIcon="save" secondaryActionPrimary onSecondaryAction={() => onSave(openDomains)} actionLabel="Xuất PDF" actionIcon="file" actionPrimary={false} onAction={() => window.print()} />;
+  if (!child) return <div className="plan-new-view">{planHeader}<div className="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p></div></div>;
   return <div className="plan-new-view">
-    <Header title="Kế hoạch giáo dục" subtitle="Bố cục mới · mục tiêu được tách riêng theo từng trẻ" secondaryActionLabel="Lưu" secondaryActionIcon="save" onSecondaryAction={() => onSave(openDomains)} actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} />
+    {planHeader}
     <section className="plan-new-child-switcher" aria-label="Chọn hồ sơ trẻ">
       <div><span>Đang xem hồ sơ của</span><ChildChoiceButtons label="Chọn trẻ" childList={childList} selectedChildId={selectedChildId} onSelectChild={onSelectChild} /></div>
       <div className="plan-new-following-count"><strong>{visibleChildGoals.length}</strong><span>mục tiêu đang theo dõi</span></div>
@@ -916,7 +883,7 @@ function HomeLegacy() {
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>(initialChildren);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
-  const [selectedChildId, setSelectedChildId] = useState(initialChildren[0].id);
+  const [selectedChildId, setSelectedChildId] = useState(initialChildren[0]?.id ?? 0);
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);

@@ -1,5 +1,5 @@
 (function () {
-  const storageKey = 'giaoan-child-plans-v2';
+  const storageKey = 'giaoan-child-plans-v3';
   const themeStorageKey = 'giaoan-theme';
   let weekLabels = ['Tuần 1 - 2', 'Tuần 3 - 4', 'Tuần 5 - 6', 'Tuần 7 - 8'];
   const statuses = ['Đạt', 'Manh nha', 'Chưa đạt'];
@@ -36,18 +36,9 @@
     domains: [...domains],
     domainIcons: { ...defaultDomainIcons },
     collapsedGoalIds: [],
-    children: [
-      { id: 1, name: 'Nguyễn Khánh Linh', birthday: '07/07/2021', gender: 'Nữ', note: 'Thích hoạt động có âm nhạc.' },
-      { id: 2, name: 'Trần Minh Anh', birthday: '18/03/2021', gender: 'Nam', note: 'Cần nhắc nhẹ khi chuyển hoạt động.' }
-    ],
-    goals: [
-      { id: 1, childId: 1, domain: 'Tương tác xã hội', longTerm: 'Duy trì tương tác với giáo viên 5–10 phút', shortTerm: ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Manh nha', 'Đạt', 'Manh nha', 'Chưa đạt'] },
-      { id: 2, childId: 1, domain: 'Giao tiếp', longTerm: 'Tăng giao tiếp bằng mắt khi được gọi tên', shortTerm: ['Nhìn mặt giáo viên khi được gọi tên.', 'Duy trì giao tiếp mắt 2–3 giây.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Manh nha', 'Manh nha', 'Đạt', 'Đạt'] },
-      { id: 3, childId: 2, domain: 'Chú ý chung', longTerm: 'Nhìn theo người lớn và đồ vật được chỉ dẫn', shortTerm: ['Nhìn theo khi cô chỉ vào đồ vật gần.', 'Luân phiên nhìn người và đồ vật 2–3 lần.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Chưa đạt', 'Manh nha', 'Đạt', 'Đạt'] }
-    ]
+    children: [],
+    goals: []
   };
-  defaults.children = [];
-  defaults.goals = [];
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const normalizePeriods = (value, fallback = weekLabels) => {
     const periods = Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
@@ -290,7 +281,8 @@
     const screen = $('#screen-plan-new');
     planNewOpenDomains = state.planNewOpenDomainsByChild?.[String(state.selectedChildId)] || state.planNewOpenDomains || {};
     const child = selectedChild();
-    if (!child) { screen.innerHTML = `<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
+    const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('save')}Lưu`, 'save-plan-new', true)}${button(`${icon('file')}Xuất PDF`, 'print')}</div>`;
+    if (!child) { screen.innerHTML = `${header('Kế hoạch giáo dục', 'Bố cục mới · mục tiêu được tách riêng theo từng trẻ', actions)}<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const childGoals = state.goals.filter((goal) => goal.childId === child.id);
     const hiddenDomains = hiddenPlanNewDomainsForChild(child.id);
     const visibleChildGoals = childGoals.filter((goal) => !hiddenDomains.includes(goal.domain));
@@ -303,7 +295,6 @@
       const domainGoals = childGoals.filter((goal) => goal.domain === domain);
       return `${domain} ${domainGoals.map((goal) => `${goal.longTerm} ${(goal.shortTerm || []).join(' ')}`).join(' ')}`.toLowerCase().includes(query);
     });
-    const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('save')}Lưu`, 'save-plan-new')}${button(`${icon('file')}Xuất PDF`, 'print', true)}</div>`;
     const domainCards = visibleDomains.map((domain, domainIndex) => {
       const domainGoals = childGoals.filter((goal) => goal.domain === domain).filter((goal) => !query || `${goal.longTerm} ${(goal.shortTerm || []).join(' ')}`.toLowerCase().includes(query));
       const open = planNewOpenDomains[domain] ?? domainIndex === 0;
