@@ -62,7 +62,10 @@
   let planNewSearch = '';
   let planNewFilter = '';
   let planNewPendingDomain = '';
-  let planNewHiddenDomains = [];
+  const planNewHiddenDomainsStorageKey = 'giaoan-plan-new-hidden-domains';
+  let planNewHiddenDomainsByChild = (() => { try { const parsed = JSON.parse(localStorage.getItem(planNewHiddenDomainsStorageKey) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; } })();
+  const hiddenPlanNewDomainsForChild = (childId) => Array.isArray(planNewHiddenDomainsByChild[String(childId)]) ? planNewHiddenDomainsByChild[String(childId)] : [];
+  const persistPlanNewHiddenDomains = () => localStorage.setItem(planNewHiddenDomainsStorageKey, JSON.stringify(planNewHiddenDomainsByChild));
   const periodsForChild = (childId) => normalizePeriods(state.evaluationPeriodsByChild?.[String(childId)], state.evaluationPeriods || weekLabels);
   const setPeriodsForChild = (childId, periods) => {
     const nextPeriods = normalizePeriods(periods);
@@ -288,9 +291,10 @@
     const child = selectedChild();
     if (!child) { screen.innerHTML = `<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const childGoals = state.goals.filter((goal) => goal.childId === child.id);
-    const visibleChildGoals = childGoals.filter((goal) => !planNewHiddenDomains.includes(goal.domain));
+    const hiddenDomains = hiddenPlanNewDomainsForChild(child.id);
+    const visibleChildGoals = childGoals.filter((goal) => !hiddenDomains.includes(goal.domain));
     const periodLabels = periodsForChild(child.id);
-    const allDomains = [...new Set([...(state.domains || domains), ...childGoals.map((goal) => goal.domain)])].filter((domain) => !planNewHiddenDomains.includes(domain));
+    const allDomains = [...new Set([...(state.domains || domains), ...childGoals.map((goal) => goal.domain)])].filter((domain) => !hiddenDomains.includes(domain));
     const query = planNewSearch.trim().toLowerCase();
     const visibleDomains = allDomains.filter((domain) => {
       if (planNewFilter && planNewFilter !== domain) return false;
@@ -512,8 +516,12 @@
     const action = event.target.closest('[data-action="delete-domain-setting"]');
     if (!action || state.view !== 'plan-new') return;
     const domainName = action.dataset.domainSettingName;
+    const child = selectedChild();
+    const childKey = String(child?.id || state.selectedChildId);
+    const hiddenDomains = hiddenPlanNewDomainsForChild(childKey);
     if (window.confirm('Ẩn lĩnh vực này khỏi Kế hoạch giáo dục new? Dữ liệu vẫn được giữ trong Cài đặt và Tổng quan.')) {
-      planNewHiddenDomains = planNewHiddenDomains.includes(domainName) ? planNewHiddenDomains : [...planNewHiddenDomains, domainName];
+      if (!hiddenDomains.includes(domainName)) planNewHiddenDomainsByChild[childKey] = [...hiddenDomains, domainName];
+      persistPlanNewHiddenDomains();
       if (planNewFilter === domainName) planNewFilter = '';
       renderPlanNew();
     }
@@ -698,6 +706,12 @@
     if (mode === 'domain') {
       state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
       state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
+      const hiddenDomains = hiddenPlanNewDomainsForChild(state.selectedChildId);
+      if (hiddenDomains.includes(selectedDomain)) {
+        const childKey = String(state.selectedChildId);
+        planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== selectedDomain);
+        persistPlanNewHiddenDomains();
+      }
     } else if (mode === 'edit-domain-setting') {
       const previousDomain = $('#goal-dialog-domain-name').dataset.previousDomain || domainName;
       state.domains = state.domains.map((item) => item === previousDomain ? domainName : item);
