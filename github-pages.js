@@ -432,7 +432,8 @@
     $('#goal-dialog-domain').closest('#goal-domain-field').hidden = isDomainEdit || isSettingsDomainEdit || !(mode === 'domain' || mode === 'long');
     $('#goal-parent-field').hidden = isDomainEdit || isSettingsDomainEdit || !isShort || isEdit;
     $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain' || isDomainEdit || isSettingsDomainEdit;
-    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain' && !isSettingsDomainEdit;
+    // Khi sửa cả lĩnh vực, ô nội dung chung bị ẩn; không để native validation chặn submit form.
+    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain' && !isSettingsDomainEdit && !isDomainEdit;
     $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
     if (isPeriodEdit) $('#goal-domain-field').hidden = true;
@@ -611,9 +612,9 @@
     const status = $('#goal-dialog-status').value;
     const id = Number($('#goal-dialog-id').value);
     const shortIndex = Number($('#goal-dialog-short-index').value);
-    if ((mode === 'domain' && !selectedDomain) || ((mode === 'edit-domain' || mode === 'edit-domain-setting') && !domainName)) return;
-    if (mode !== 'edit-period' && mode !== 'domain' && mode !== 'edit-domain' && !text) return;
-    if (mode === 'edit-period' && !periodLabel) return;
+    if ((mode === 'domain' && !selectedDomain) || ((mode === 'edit-domain' || mode === 'edit-domain-setting') && !domainName)) { window.alert('Vui lòng chọn đầy đủ thông tin lĩnh vực.'); return; }
+    if (mode !== 'edit-period' && mode !== 'domain' && mode !== 'edit-domain' && !text) { window.alert('Vui lòng nhập mục tiêu dài hạn.'); return; }
+    if (mode === 'edit-period' && !periodLabel) { window.alert('Vui lòng nhập tên thời gian.'); return; }
     if (mode === 'domain') {
       state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
       state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
@@ -627,11 +628,13 @@
     } else if (mode === 'edit-domain') {
       const domainGoal = state.goals.find((item) => item.id === id);
       const previousDomain = domainGoal?.domain || $('#goal-dialog-domain-name').dataset.previousDomain || selectedDomain;
+      const previousIcon = state.domainIcons?.[previousDomain] || defaultDomainIcons[previousDomain] || domainIconOptions[0].value;
       const shortTerm = [...document.querySelectorAll('[data-edit-domain-short]')].map((input) => input.value.trim()).filter(Boolean);
       const nextStatuses = [...document.querySelectorAll('[data-edit-domain-status]')].map((select) => select.value);
       const nextPeriodLabels = [...document.querySelectorAll('[data-edit-domain-period]')].map((input) => input.value.trim());
       const normalizedLabels = nextPeriodLabels.map((label) => label.toLocaleLowerCase());
-      if (nextPeriodLabels.some((label) => !label) || new Set(normalizedLabels).size !== normalizedLabels.length) { window.alert('Tên thời gian theo tuần phải đầy đủ và không được trùng nhau.'); return; }
+      if (!domainGoal) { window.alert('Không tìm thấy lĩnh vực cần chỉnh sửa. Vui lòng đóng popup và mở lại.'); return; }
+      if (!nextPeriodLabels.length || nextPeriodLabels.some((label) => !label) || new Set(normalizedLabels).size !== normalizedLabels.length) { window.alert('Tên thời gian theo tuần phải đầy đủ và không được trùng nhau.'); return; }
       const nextNote = $('#goal-dialog-note').value.trim();
       state.evaluationPeriods = nextPeriodLabels;
       weekLabels = state.evaluationPeriods;
@@ -639,7 +642,7 @@
       state.domains = state.domains.map((item) => item === previousDomain ? domainName : item);
       domains = state.domains;
       if (previousDomain !== domainName) delete state.domainIcons[previousDomain];
-      state.domainIcons[domainName] = state.domainIcons?.[domainName] || defaultDomainIcons[domainName] || state.domainIcons?.[previousDomain] || selectedDomainIcon;
+      state.domainIcons[domainName] = state.domainIcons?.[domainName] || previousIcon;
     } else if (mode === 'long') {
       state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
     } else if (mode === 'edit-long') {
