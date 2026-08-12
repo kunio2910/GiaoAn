@@ -584,7 +584,7 @@ function PlanNewView({ childList, selectedChildId, onSelectChild, goals, domains
     return matchesFilter && matchesSearch;
   });
   if (!child) return <div className="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p></div>;
-  return <>
+  return <div className="plan-new-view">
     <Header title="Kế hoạch giáo dục" subtitle="Bố cục mới · mục tiêu được tách riêng theo từng trẻ" actionLabel="Xuất PDF" actionIcon="file" onAction={() => window.print()} />
     <section className="plan-new-child-switcher" aria-label="Chọn hồ sơ trẻ">
       <div><span>Đang xem hồ sơ của</span><ChildChoiceButtons label="Chọn trẻ" childList={childList} selectedChildId={selectedChildId} onSelectChild={onSelectChild} /></div>
@@ -599,7 +599,7 @@ function PlanNewView({ childList, selectedChildId, onSelectChild, goals, domains
       {!visibleDomainNames.length && <div className="plan-new-no-results"><Icon name="target" size={29} /><strong>Không tìm thấy lĩnh vực hoặc mục tiêu</strong><span>Thử từ khóa khác hoặc xóa bộ lọc để xem lại toàn bộ dữ liệu.</span></div>}
       <footer className="plan-new-footer"><span>Hiển thị {visibleDomainNames.length} lĩnh vực · {childGoals.length} mục tiêu dài hạn</span><span>Gợi ý: mở từng lĩnh vực để thao tác nhanh, tránh màn hình quá dày.</span></footer>
     </section>
-  </>;
+  </div>;
 }
 
 function PlanViewV2({ childList, selectedChildId, onSelectChild, goals, evaluationPeriods, domainIcons, collapsedGoalIds, onToggleCollapse, onStatusChange, onNoteClick, onAddDomain, onAddLong, onAddShort, onAddPeriod, onEditDomain, onEditLong, onDeleteGoal, onEditShort, onDeleteShort, onEditPeriod }: { childList: Child[]; selectedChildId: number; onSelectChild: (id: number) => void; goals: Goal[]; evaluationPeriods: string[]; domainIcons: Record<string, DomainIcon>; collapsedGoalIds: number[]; onToggleCollapse: (goalId: number) => void; onStatusChange: (id: number, week: number, status: Status) => void; onNoteClick: (id: number) => void; onAddDomain: () => void; onAddLong: () => void; onAddShort: () => void; onAddPeriod: () => void; onEditDomain: (goal: Goal) => void; onEditLong: (goal: Goal) => void; onDeleteGoal: (goal: Goal) => void; onEditShort: (goal: Goal, index: number) => void; onDeleteShort: (goal: Goal, index: number) => void; onEditPeriod: (goal: Goal, index: number) => void }) {
