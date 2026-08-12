@@ -398,3 +398,19 @@ html.dark-mode .table-add-button{border-color:#456385;background:#17253a;color:#
 .child-card-details svg{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .sidebar-art,.profile-card{display:none!important}.table-empty-state svg{width:32px;height:32px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.dark-mode .summary-name strong,html.dark-mode .summary-name strong{color:#b8d3ff}.dark-mode .child-card-details,html.dark-mode .child-card-details{color:#b7c8e4}
 .overview-calendar-days span.is-today.schedule-color-blue .calendar-event-name,.overview-calendar-days span.is-today.schedule-color-blue .calendar-event-time{color:#145acb!important}.overview-calendar-days span.is-today.schedule-color-purple .calendar-event-name,.overview-calendar-days span.is-today.schedule-color-purple .calendar-event-time{color:#7954c6!important}.overview-calendar-days span.is-today.schedule-color-teal .calendar-event-name,.overview-calendar-days span.is-today.schedule-color-teal .calendar-event-time{color:#218e80!important}.overview-calendar-days span.is-today.schedule-color-orange .calendar-event-name,.overview-calendar-days span.is-today.schedule-color-orange .calendar-event-time{color:#bd6d18!important}.overview-calendar-days span.is-today.schedule-color-pink .calendar-event-name,.overview-calendar-days span.is-today.schedule-color-pink .calendar-event-time{color:#c24c67!important}.overview-calendar-days span.is-today.schedule-color-green .calendar-event-name,.overview-calendar-days span.is-today.schedule-color-green .calendar-event-time{color:#5f8528!important}.overview-calendar-days span.is-today.is-multi-scheduled .calendar-event-name,.overview-calendar-days span.is-today.is-multi-scheduled .calendar-event-time{color:#145acb!important}
+/* Focused goal editing and clearer action targets */
+#goal-modal.small-edit-modal,.modal-backdrop.small-edit-modal{justify-content:center;align-items:center;padding:24px}
+#goal-modal.small-edit-modal .goal-dialog,.modal-backdrop.small-edit-modal .goal-dialog{width:min(460px,100%);height:auto;max-height:min(90vh,620px);overflow-y:auto;border-radius:16px;padding:24px}
+#goal-modal.small-edit-modal .goal-dialog .modal-actions,.modal-backdrop.small-edit-modal .goal-dialog .modal-actions{position:static;inset:auto;bottom:auto;margin:20px 0 0;padding:0;background:transparent;border-top:0}
+.goals-board .goal-card-actions{gap:12px}
+.goals-board .goal-card-action,.goals-board .goal-card-note-button{min-height:41px;min-width:42px;padding:0 12px}
+.goals-board .goal-card-note-button{width:42px;padding:0}
+.goals-board .goal-card-actions svg,.goals-board .short-goal-actions .row-action svg,.goals-board .period-action svg{width:19px;height:19px}
+.goals-board .goal-card-note-button svg,.goals-board .note-edit-button svg{width:22px;height:22px}
+.goals-board .short-goal-actions{gap:8px}
+.goals-board .short-goal-actions .row-action{width:34px;min-height:34px}
+.goals-board .period-action{width:30px;height:30px}
+.overview-calendar-days span.is-today{background:#fff!important;color:#145acb!important;border:2px solid #fff;box-shadow:0 5px 14px rgba(20,90,203,.18),inset 0 0 0 1px #dbe6f5;position:relative;z-index:1}
+.overview-calendar-days span.is-today.is-scheduled,.overview-calendar-days span.is-today.is-multi-scheduled{background:#fff!important;box-shadow:0 5px 14px rgba(20,90,203,.18),inset 0 0 0 1px #dbe6f5}
+.overview-calendar-days span.is-today>b{color:#145acb!important}
+.overview-calendar-days span.is-today.is-sunday{color:#145acb!important}

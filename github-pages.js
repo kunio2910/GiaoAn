@@ -96,7 +96,7 @@
     const cards = goals.map((goal) => {
       const shortGoals = goal.shortTerm?.length ? goal.shortTerm.map((item, shortIndex) => `<div class="short-goal-row"><span class="short-goal-bullet"></span><span class="short-goal-text">${esc(item || 'Chưa nhập mục tiêu')}</span><span class="short-goal-actions"><button type="button" class="row-action edit" data-action="edit-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Sửa mục tiêu ngắn hạn">${icon('edit')}</button><button type="button" class="row-action delete" data-action="delete-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></span></div>`).join('') : '<p class="muted-copy">Chưa có mục tiêu ngắn hạn.</p>';
       const searchText = esc(`${goal.domain || ''} ${goal.longTerm || ''} ${(goal.shortTerm || []).join(' ')}`.toLowerCase());
-      return `<article class="goal-card" data-goal-card data-search="${searchText}"><header class="goal-card-header"><div class="goal-domain-heading"><span class="goal-domain-icon">${icon('target')}</span><div><span class="goal-card-eyebrow">Lĩnh vực</span><h3>${esc(goal.domain || 'Chưa phân loại')}</h3></div></div><div class="goal-card-actions"><button type="button" class="goal-card-action edit" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button type="button" class="goal-card-action delete" data-action="delete-goal" data-goal-id="${goal.id}">${icon('trash')}Xóa</button><button type="button" class="goal-card-note-button" data-action="open-note" data-goal-id="${goal.id}" aria-label="Ghi chú mục tiêu">${icon('note')}</button></div></header><div class="goal-card-main"><section class="goal-long-section"><h4>Mục tiêu dài hạn</h4><p>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</p><button type="button" class="text-action" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Chỉnh sửa mục tiêu dài hạn</button></section><section class="goal-short-section"><div class="goal-card-section-head"><h4>Mục tiêu ngắn hạn</h4><button type="button" class="outline-button compact" data-action="add-short" data-goal-id="${goal.id}">${icon('plus')}Thêm</button></div><div class="short-goal-list">${shortGoals}</div></section></div><section class="goal-results-section"><div class="goal-card-section-head"><div><h4>Kết quả theo tuần</h4><p>Cập nhật trạng thái trực tiếp theo từng giai đoạn.</p></div><button type="button" class="outline-button compact" data-action="add-period">${icon('plus')}Thêm thời gian</button></div><div class="goal-period-grid">${periods.map((label, periodIndex) => `<div class="goal-period"><div class="goal-period-label-row"><span class="goal-period-label">${esc(label)}</span><span class="period-actions"><button type="button" class="period-action" data-action="edit-period" data-period-index="${periodIndex}" aria-label="Sửa mốc ${esc(label)}">${icon('edit')}</button><button type="button" class="period-action delete" data-action="delete-period" data-period-index="${periodIndex}" aria-label="Xóa mốc ${esc(label)}">${icon('trash')}</button></span></div>${statusMarkup(goal.statuses?.[periodIndex] || 'Chưa đạt', goal.id, periodIndex, false)}</div>`).join('')}</div></section><footer class="goal-card-footer"><div><h4>Ghi chú</h4><p>${goal.note ? esc(goal.note) : '<span class="cell-placeholder">Chưa có ghi chú.</span>'}</p></div><button type="button" class="note-edit-button" data-action="open-note" data-goal-id="${goal.id}">${icon('note')}${goal.note ? 'Chỉnh sửa ghi chú' : 'Thêm ghi chú'}</button></footer></article>`;
+      return `<article class="goal-card" data-goal-card data-search="${searchText}"><header class="goal-card-header"><div class="goal-domain-heading"><span class="goal-domain-icon">${icon('target')}</span><div><span class="goal-card-eyebrow">Lĩnh vực</span><h3>${esc(goal.domain || 'Chưa phân loại')}</h3></div></div><div class="goal-card-actions"><button type="button" class="goal-card-action edit" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button type="button" class="goal-card-action delete" data-action="delete-goal" data-goal-id="${goal.id}">${icon('trash')}Xóa</button><button type="button" class="goal-card-note-button" data-action="open-note" data-goal-id="${goal.id}" aria-label="Ghi chú mục tiêu">${icon('note')}</button></div></header><div class="goal-card-main"><section class="goal-long-section"><h4>Mục tiêu dài hạn</h4><p>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</p><button type="button" class="text-action" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Chỉnh sửa mục tiêu dài hạn</button></section><section class="goal-short-section"><div class="goal-card-section-head"><h4>Mục tiêu ngắn hạn</h4><button type="button" class="outline-button compact" data-action="add-short" data-goal-id="${goal.id}">${icon('plus')}Thêm</button></div><div class="short-goal-list">${shortGoals}</div></section></div><section class="goal-results-section"><div class="goal-card-section-head"><div><h4>Kết quả theo tuần</h4><p>Cập nhật trạng thái trực tiếp theo từng giai đoạn.</p></div><button type="button" class="outline-button compact" data-action="add-period">${icon('plus')}Thêm thời gian</button></div><div class="goal-period-grid">${periods.map((label, periodIndex) => `<div class="goal-period"><div class="goal-period-label-row"><span class="goal-period-label">${esc(label)}</span><span class="period-actions"><button type="button" class="period-action" data-action="edit-period" data-goal-id="${goal.id}" data-period-index="${periodIndex}" aria-label="Sửa kết quả ${esc(label)}">${icon('edit')}</button><button type="button" class="period-action delete" data-action="delete-period" data-period-index="${periodIndex}" aria-label="Xóa mốc ${esc(label)}">${icon('trash')}</button></span></div>${statusMarkup(goal.statuses?.[periodIndex] || 'Chưa đạt', goal.id, periodIndex, false)}</div>`).join('')}</div></section><footer class="goal-card-footer"><div><h4>Ghi chú</h4><p>${goal.note ? esc(goal.note) : '<span class="cell-placeholder">Chưa có ghi chú.</span>'}</p></div><button type="button" class="note-edit-button" data-action="open-note" data-goal-id="${goal.id}">${icon('note')}${goal.note ? 'Chỉnh sửa ghi chú' : 'Thêm ghi chú'}</button></footer></article>`;
     }).join('');
     const empty = `<div class="board-empty-state"><span class="board-empty-icon">${icon('target')}</span><strong>Chưa có mục tiêu phát triển</strong><span>Bắt đầu bằng cách thêm lĩnh vực hoặc mục tiêu dài hạn.</span><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div>`;
     return `<div class="goals-board"><div class="board-toolbar"><div class="board-search">${icon('overview')}<input type="search" data-goal-search placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm mục tiêu" /></div><span class="board-summary"><strong data-board-count>${goals.length}</strong> mục tiêu đang theo dõi</span><div class="board-actions"><button type="button" class="button board-secondary-action" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div></div><div class="goal-card-list" data-goal-card-list>${cards || empty}</div><div class="board-footer"><span>Hiển thị <strong data-board-footer-count>${goals.length}</strong> mục tiêu</span><span class="board-footer-hint">Mẹo: dùng nút Sửa/Xóa ngay trên từng thẻ để thao tác nhanh.</span></div></div>`;
@@ -288,8 +288,8 @@
     const isPeriodEdit = mode === 'edit-period';
     const titles = { domain: 'Thêm lĩnh vực', long: 'Thêm mục tiêu dài hạn', short: 'Thêm mục tiêu ngắn hạn', 'edit-long': 'Chỉnh sửa mục tiêu dài hạn', 'edit-short': 'Chỉnh sửa mục tiêu ngắn hạn', period: 'Thêm thời gian kết quả' };
     const labels = { domain: 'Tên lĩnh vực', long: 'Mục tiêu dài hạn', short: 'Mục tiêu ngắn hạn', 'edit-long': 'Mục tiêu dài hạn', 'edit-short': 'Mục tiêu ngắn hạn', period: 'Tên thời gian đánh giá' };
-    titles['edit-period'] = 'Sửa mốc thời gian';
-    labels['edit-period'] = 'Tên thời gian đánh giá';
+    titles['edit-period'] = 'Chỉnh sửa kết quả theo tuần';
+    labels['edit-period'] = 'Trạng thái kết quả';
     $('#goal-dialog-title').textContent = titles[mode];
     $('#goal-dialog-description').textContent = mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-dialog-mode').value = mode;
@@ -299,17 +299,22 @@
     $('#goal-dialog-submit').textContent = isEdit ? 'Lưu thay đổi' : 'Lưu';
     $('#goal-dialog-domain').value = goal?.domain || currentGoals[0]?.domain || domains[0];
     $('#goal-dialog-text').value = mode === 'edit-short' && goal ? goal.shortTerm?.[shortIndex] || '' : mode === 'edit-long' ? goal?.longTerm || '' : '';
-    if (isPeriodEdit) { $('#goal-dialog-description').textContent = 'Cập nhật tên mốc thời gian theo dõi kết quả.'; $('#goal-dialog-text').value = weekLabels[shortIndex] || ''; }
+    $('#goal-dialog-status').value = isPeriodEdit && goal ? goal.statuses?.[shortIndex] || 'Chưa đạt' : 'Chưa đạt';
+    $('#goal-dialog-description').textContent = isPeriodEdit ? 'Chỉ cập nhật trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
+    $('#goal-text-field').hidden = isPeriodEdit;
+    $('#goal-dialog-text').required = !isPeriodEdit;
+    $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
     if (isPeriodEdit) $('#goal-domain-field').hidden = true;
     $('#goal-parent-field').hidden = !isShort || isEdit;
     const parentSelect = $('#goal-dialog-parent');
     parentSelect.innerHTML = currentGoals.map((item) => `<option value="${item.id}">${esc(item.longTerm || 'Chưa nhập mục tiêu')}</option>`).join('');
     if (goal && isEdit) parentSelect.value = goal.id;
+    $('#goal-modal').classList.toggle('small-edit-modal', isEdit);
     $('#goal-modal').removeAttribute('hidden');
-    $('#goal-dialog-text').focus();
+    (isPeriodEdit ? $('#goal-dialog-status') : $('#goal-dialog-text')).focus();
   }
-  function closeGoalModal() { $('#goal-modal').setAttribute('hidden', ''); }
+  function closeGoalModal() { $('#goal-modal').classList.remove('small-edit-modal'); $('#goal-modal').setAttribute('hidden', ''); }
 
   document.addEventListener('click', (event) => {
     const viewButton = event.target.closest('[data-view]');
@@ -363,7 +368,8 @@
     if (action.dataset.action === 'add-period') openGoalModal('period');
     if (action.dataset.action === 'edit-period') {
       const periodIndex = Number(action.dataset.periodIndex);
-      if (Number.isInteger(periodIndex) && state.evaluationPeriods[periodIndex]) openGoalModal('edit-period', undefined, periodIndex);
+      const goalId = Number(action.dataset.goalId);
+      if (Number.isInteger(periodIndex) && state.evaluationPeriods[periodIndex] && goalId) openGoalModal('edit-period', goalId, periodIndex);
     }
     if (action.dataset.action === 'delete-period') {
       const periodIndex = Number(action.dataset.periodIndex);
@@ -414,9 +420,10 @@
     event.preventDefault();
     const mode = $('#goal-dialog-mode').value;
     const text = $('#goal-dialog-text').value.trim();
+    const status = $('#goal-dialog-status').value;
     const id = Number($('#goal-dialog-id').value);
     const shortIndex = Number($('#goal-dialog-short-index').value);
-    if (!text) return;
+    if (mode !== 'edit-period' && !text) return;
     if (mode === 'domain') {
       state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: text, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
     } else if (mode === 'long') {
@@ -432,12 +439,8 @@
       state.goals.forEach((goal) => goal.statuses.push('Chưa đạt'));
       weekLabels = state.evaluationPeriods;
     } else if (mode === 'edit-period') {
-      const nextPeriods = [...state.evaluationPeriods];
-      if (shortIndex >= 0 && shortIndex < nextPeriods.length && !nextPeriods.some((label, index) => index !== shortIndex && label === text)) {
-        nextPeriods[shortIndex] = text;
-        state.evaluationPeriods = nextPeriods;
-        weekLabels = nextPeriods;
-      }
+      const goal = state.goals.find((item) => item.id === id);
+      if (goal && shortIndex >= 0) goal.statuses[shortIndex] = status;
     }
     persist(); closeGoalModal(); render();
   });
