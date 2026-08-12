@@ -83,6 +83,7 @@
   const domainIconBadge = (value, size = '') => { const option = domainIconOption(value); return `<span class="domain-icon-badge ${option.tone}">${icon(option.value, size ? `icon-${size}` : '')}</span>`; };
   const domainIconPicker = (selected, action = 'select-domain-icon') => `<div class="domain-icon-picker" role="group" aria-label="Chọn icon lĩnh vực">${domainIconOptions.map((option) => `<button type="button" class="domain-icon-choice ${option.value === selected ? 'selected' : ''}" data-action="${action}" data-domain-icon="${option.value}" aria-label="${option.label}" title="${option.label}">${domainIconBadge(option.value)}</button>`).join('')}</div>`;
   const initials = (name) => String(name).split(' ').map((part) => part[0]).slice(-2).join('');
+  const calendarChildName = (name) => String(name || '').trim().split(/\s+/).filter(Boolean).slice(-2).join(' ');
   const persistentData = () => {
     const data = { ...state };
     delete data.view;
@@ -213,7 +214,7 @@
     const title = monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
     const todayKey = `${overviewCalendarToday.getFullYear()}-${overviewCalendarToday.getMonth()}-${overviewCalendarToday.getDate()}`;
     const cells = getOverviewCalendarCells(year, month);
-    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>${title}</strong></div><div class="overview-calendar-controls"><button type="button" class="overview-calendar-today" data-calendar-action="today">Hôm nay</button><button type="button" class="overview-calendar-nav" data-calendar-action="previous" aria-label="Tháng trước">${icon('back')}</button><button type="button" class="overview-calendar-nav is-next" data-calendar-action="next" aria-label="Tháng sau">${icon('back')}</button><button type="button" class="overview-calendar-view">Tháng ${icon('chevron')}</button><span class="overview-calendar-icon">${icon('calendar')}</span></div></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; const entries = cell.muted ? [] : scheduleEntriesForDate(cell.date); const isScheduled = entries.length > 0; const classes = [cell.muted ? 'is-muted' : '', isSunday ? 'is-sunday' : '', isScheduled ? 'is-scheduled' : '', entries.length > 1 ? 'is-multi-scheduled' : '', entries.length === 1 ? `schedule-color-${entries[0].color}` : '', isToday ? 'is-today' : ''].filter(Boolean).join(' '); const eventMarkup = entries.length === 1 ? `<small class="calendar-event-name schedule-text-${entries[0].color}">${esc(entries[0].child.name)}</small><small class="calendar-event-time">${esc(entries[0].time)}</small>` : entries.map((entry) => `<small class="calendar-event-name schedule-text-${entry.color}">${esc(entry.child.name)}</small>`).join(''); return `<span class="${classes}" ${isScheduled ? `role="button" tabindex="0" data-calendar-date="${calendarDateKey(cell.date)}"` : ''}><b>${cell.day}</b>${eventMarkup}</span>`; }).join('')}</div></section>`;
+    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>${title}</strong></div><div class="overview-calendar-controls"><button type="button" class="overview-calendar-today" data-calendar-action="today">Hôm nay</button><button type="button" class="overview-calendar-nav" data-calendar-action="previous" aria-label="Tháng trước">${icon('back')}</button><button type="button" class="overview-calendar-nav is-next" data-calendar-action="next" aria-label="Tháng sau">${icon('back')}</button><button type="button" class="overview-calendar-view">Tháng ${icon('chevron')}</button><span class="overview-calendar-icon">${icon('calendar')}</span></div></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; const entries = cell.muted ? [] : scheduleEntriesForDate(cell.date); const isScheduled = entries.length > 0; const classes = [cell.muted ? 'is-muted' : '', isSunday ? 'is-sunday' : '', isScheduled ? 'is-scheduled' : '', entries.length > 1 ? 'is-multi-scheduled' : '', entries.length === 1 ? `schedule-color-${entries[0].color}` : '', isToday ? 'is-today' : ''].filter(Boolean).join(' '); const eventMarkup = entries.length === 1 ? `<small class="calendar-event-name schedule-text-${entries[0].color}">${esc(calendarChildName(entries[0].child.name))}</small><small class="calendar-event-time">${esc(entries[0].time)}</small>` : entries.map((entry) => `<small class="calendar-event-name schedule-text-${entry.color}">${esc(calendarChildName(entry.child.name))}</small>`).join(''); return `<span class="${classes}" ${isScheduled ? `role="button" tabindex="0" data-calendar-date="${calendarDateKey(cell.date)}"` : ''}><b>${cell.day}</b>${eventMarkup}</span>`; }).join('')}</div></section>`;
   }
   function openCalendarSchedulePopup(dateKey) { const parts = dateKey.split('-').map(Number); const date = new Date(parts[0], parts[1] - 1, parts[2]); const entries = scheduleEntriesForDate(date); $('#calendar-popup-title').textContent = new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date); $('#calendar-popup-list').innerHTML = entries.map((entry) => `<div class="calendar-popup-entry"><i class="schedule-dot schedule-color-${entry.color}"></i><div><strong>${esc(entry.child.name)}</strong><span>${esc(entry.time)}</span></div></div>`).join(''); $('#calendar-schedule-popup').removeAttribute('hidden'); }
   function closeCalendarSchedulePopup() { $('#calendar-schedule-popup').setAttribute('hidden', ''); }
@@ -285,7 +286,7 @@
     const hiddenDomains = hiddenPlanNewDomainsForChild(child.id);
     const visibleChildGoals = childGoals.filter((goal) => !hiddenDomains.includes(goal.domain));
     const periodLabels = periodsForChild(child.id);
-    const allDomains = [...new Set([...(state.domains || domains), ...childGoals.map((goal) => goal.domain)])].filter((domain) => !hiddenDomains.includes(domain));
+    const allDomains = [...new Set(visibleChildGoals.map((goal) => goal.domain))].filter((domain) => !hiddenDomains.includes(domain));
     const query = planNewSearch.trim().toLowerCase();
     const visibleDomains = allDomains.filter((domain) => {
       if (planNewFilter && planNewFilter !== domain) return false;
@@ -451,7 +452,7 @@
     const labels = { domain: 'Tên lĩnh vực', long: 'Mục tiêu dài hạn', short: 'Mục tiêu ngắn hạn', 'edit-long': 'Mục tiêu dài hạn', 'edit-short': 'Mục tiêu ngắn hạn', period: 'Tên thời gian đánh giá' };
     titles['edit-period'] = 'Chỉnh sửa kết quả theo tuần';
     labels['edit-period'] = 'Trạng thái kết quả';
-    labels.domain = 'Lĩnh vực';
+    labels.domain = 'Mục tiêu dài hạn';
     labels['edit-period'] = 'Tên thời gian';
     $('#goal-dialog-title').textContent = titles[mode];
     $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isSettingsDomainEdit ? 'Cập nhật tên và icon hiển thị của lĩnh vực.' : isDomainEdit ? 'Cập nhật nhanh toàn bộ thông tin của lĩnh vực này.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
@@ -485,9 +486,9 @@
     $('#goal-edit-note-field').hidden = !isDomainEdit;
     $('#goal-dialog-domain').closest('#goal-domain-field').hidden = isDomainEdit || isSettingsDomainEdit || !(mode === 'domain' || mode === 'long');
     $('#goal-parent-field').hidden = isDomainEdit || isSettingsDomainEdit || !isShort || isEdit;
-    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain' || isDomainEdit || isSettingsDomainEdit;
+    $('#goal-text-field').hidden = isPeriodEdit || isDomainEdit || isSettingsDomainEdit;
     // Khi sửa cả lĩnh vực, ô nội dung chung bị ẩn; không để native validation chặn submit form.
-    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain' && !isSettingsDomainEdit && !isDomainEdit;
+    $('#goal-dialog-text').required = !isPeriodEdit && !isSettingsDomainEdit && !isDomainEdit;
     $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
     if (isPeriodEdit) $('#goal-domain-field').hidden = true;
@@ -699,10 +700,10 @@
     const id = Number($('#goal-dialog-id').value);
     const shortIndex = Number($('#goal-dialog-short-index').value);
     if ((mode === 'domain' && !selectedDomain) || ((mode === 'edit-domain' || mode === 'edit-domain-setting') && !domainName)) { window.alert('Vui lòng chọn đầy đủ thông tin lĩnh vực.'); return; }
-    if (mode !== 'edit-period' && mode !== 'domain' && mode !== 'edit-domain' && !text) { window.alert('Vui lòng nhập mục tiêu dài hạn.'); return; }
+    if ((mode === 'domain' || mode === 'long' || mode === 'short' || mode === 'edit-long' || mode === 'edit-short') && !text) { window.alert('Vui lòng nhập mục tiêu dài hạn.'); return; }
     if (mode === 'edit-period' && !periodLabel) { window.alert('Vui lòng nhập tên thời gian.'); return; }
     if (mode === 'domain') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
       state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
       const hiddenDomains = hiddenPlanNewDomainsForChild(state.selectedChildId);
       if (hiddenDomains.includes(selectedDomain)) {
