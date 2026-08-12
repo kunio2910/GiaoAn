@@ -3,7 +3,7 @@
   const themeStorageKey = 'giaoan-theme';
   let weekLabels = ['Tuần 1 - 2', 'Tuần 3 - 4', 'Tuần 5 - 6', 'Tuần 7 - 8'];
   const statuses = ['Đạt', 'Manh nha', 'Chưa đạt'];
-  const domains = ['Tương tác xã hội', 'Chú ý chung', 'Giao tiếp', 'Kỹ năng tự phục vụ'];
+  let domains = ['Tương tác xã hội', 'Chú ý chung', 'Giao tiếp', 'Kỹ năng tự phục vụ'];
   const scheduleColorOptions = [
     { value: 'blue', label: 'Xanh dương' },
     { value: 'purple', label: 'Tím' },
@@ -15,6 +15,7 @@
   const teachingDayLabels = { 1: 'Thứ 2', 2: 'Thứ 3', 3: 'Thứ 4', 4: 'Thứ 5', 5: 'Thứ 6', 6: 'Thứ 7', 7: 'Chủ nhật' };
   const defaults = {
     evaluationPeriods: [...weekLabels],
+    domains: [...domains],
     children: [
       { id: 1, name: 'Nguyễn Khánh Linh', birthday: '07/07/2021', gender: 'Nữ', note: 'Thích hoạt động có âm nhạc.' },
       { id: 2, name: 'Trần Minh Anh', birthday: '18/03/2021', gender: 'Nam', note: 'Cần nhắc nhẹ khi chuyển hoạt động.' }
@@ -28,8 +29,9 @@
   defaults.children = [];
   defaults.goals = [];
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
-  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: loaded?.evaluationPeriods || defaults.evaluationPeriods, children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
+  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: loaded?.evaluationPeriods || defaults.evaluationPeriods, domains: loaded?.domains || defaults.domains, children: loaded?.children || defaults.children, goals: loaded?.goals || defaults.goals, selectedChildId: (loaded?.children || defaults.children)[0]?.id || 0, view: 'plan' };
   weekLabels = state.evaluationPeriods;
+  domains = state.domains;
   const childNameSlug = (name) => String(name ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const shareChildSlug = (() => { const value = new URLSearchParams(window.location.search).get('share'); return value?.trim().toLowerCase() || null; })();
   const shareMode = shareChildSlug !== null;
@@ -99,7 +101,7 @@
       return `<article class="goal-card" data-goal-card data-search="${searchText}"><header class="goal-card-header"><div class="goal-domain-heading"><span class="goal-domain-icon">${icon('target')}</span><div><span class="goal-card-eyebrow">Lĩnh vực</span><h3>${esc(goal.domain || 'Chưa phân loại')}</h3></div></div><div class="goal-card-actions"><button type="button" class="goal-card-action edit" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button type="button" class="goal-card-action delete" data-action="delete-goal" data-goal-id="${goal.id}">${icon('trash')}Xóa</button><button type="button" class="goal-card-note-button" data-action="open-note" data-goal-id="${goal.id}" aria-label="Ghi chú mục tiêu">${icon('note')}</button></div></header><div class="goal-card-main"><section class="goal-long-section"><h4>Mục tiêu dài hạn</h4><p>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</p><button type="button" class="text-action" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Chỉnh sửa mục tiêu dài hạn</button></section><section class="goal-short-section"><div class="goal-card-section-head"><h4>Mục tiêu ngắn hạn</h4><button type="button" class="outline-button compact" data-action="add-short" data-goal-id="${goal.id}">${icon('plus')}Thêm</button></div><div class="short-goal-list">${shortGoals}</div></section></div><section class="goal-results-section"><div class="goal-card-section-head"><div><h4>Kết quả theo tuần</h4><p>Cập nhật trạng thái trực tiếp theo từng giai đoạn.</p></div><button type="button" class="outline-button compact" data-action="add-period">${icon('plus')}Thêm thời gian</button></div><div class="goal-period-grid">${periods.map((label, periodIndex) => `<div class="goal-period"><div class="goal-period-label-row"><span class="goal-period-label">${esc(label)}</span><span class="period-actions"><button type="button" class="period-action" data-action="edit-period" data-goal-id="${goal.id}" data-period-index="${periodIndex}" aria-label="Sửa kết quả ${esc(label)}">${icon('edit')}</button><button type="button" class="period-action delete" data-action="delete-period" data-period-index="${periodIndex}" aria-label="Xóa mốc ${esc(label)}">${icon('trash')}</button></span></div>${statusMarkup(goal.statuses?.[periodIndex] || 'Chưa đạt', goal.id, periodIndex, false)}</div>`).join('')}</div></section><footer class="goal-card-footer"><div><h4>Ghi chú</h4><p>${goal.note ? esc(goal.note) : '<span class="cell-placeholder">Chưa có ghi chú.</span>'}</p></div><button type="button" class="note-edit-button" data-action="open-note" data-goal-id="${goal.id}">${icon('note')}${goal.note ? 'Chỉnh sửa ghi chú' : 'Thêm ghi chú'}</button></footer></article>`;
     }).join('');
     const empty = `<div class="board-empty-state"><span class="board-empty-icon">${icon('target')}</span><strong>Chưa có mục tiêu phát triển</strong><span>Bắt đầu bằng cách thêm lĩnh vực hoặc mục tiêu dài hạn.</span><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div>`;
-    return `<div class="goals-board"><div class="board-toolbar"><div class="board-search">${icon('overview')}<input type="search" data-goal-search placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm mục tiêu" /></div><span class="board-summary"><strong data-board-count>${goals.length}</strong> mục tiêu đang theo dõi</span><div class="board-actions"><button type="button" class="button board-secondary-action" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button><button type="button" class="button primary" data-action="add-long">${icon('plus')}Thêm mục tiêu</button></div></div><div class="goal-card-list" data-goal-card-list>${cards || empty}</div><div class="board-footer"><span>Hiển thị <strong data-board-footer-count>${goals.length}</strong> mục tiêu</span><span class="board-footer-hint">Mẹo: dùng nút Sửa/Xóa ngay trên từng thẻ để thao tác nhanh.</span></div></div>`;
+    return `<div class="goals-board"><div class="board-toolbar"><div class="board-search">${icon('overview')}<input type="search" data-goal-search placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm mục tiêu" /></div><span class="board-summary"><strong data-board-count>${goals.length}</strong> mục tiêu đang theo dõi</span><div class="board-actions"><button type="button" class="button board-secondary-action" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button></div></div><div class="goal-card-list" data-goal-card-list>${cards || empty}</div><div class="board-footer"><span>Hiển thị <strong data-board-footer-count>${goals.length}</strong> mục tiêu</span><span class="board-footer-hint">Mẹo: dùng nút Sửa/Xóa ngay trên từng thẻ để thao tác nhanh.</span></div></div>`;
   }
   function renderGoalsTable(goals, readOnly = false) {
     if (!readOnly) return renderGoalsBoard(goals);
@@ -266,8 +268,13 @@
     updateObjectivePreview();
   }
 
-  function renderSettings() {
+  function renderSettingsLegacy() {
     $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input type="checkbox" data-theme-toggle aria-label="Giao diện tối" /></label><div class="settings-save"><button type="button" class="button primary" data-action="save-settings">${icon('save')}Lưu cài đặt</button><span id="settings-saved" hidden>Đã lưu thay đổi</span></div></div>`;
+  }
+
+  function renderSettings() {
+    const items = domains.map((domain) => `<div class="domain-settings-item"><i aria-hidden="true"></i>${esc(domain)}</div>`).join('');
+    $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input type="checkbox" data-theme-toggle aria-label="Giao diện tối" /></label><div class="settings-save"><button type="button" class="button primary" data-action="save-settings">${icon('save')}Lưu cài đặt</button><span id="settings-saved" hidden>Đã lưu thay đổi</span></div></div><div class="settings-card domain-settings-section"><div class="settings-heading"><div class="settings-icon">${icon('target')}</div><div><h2>Quản lý lĩnh vực</h2><p>Các lĩnh vực được sử dụng trong mục tiêu phát triển.</p></div></div><form id="domain-settings-form" class="domain-settings-form"><label class="field"><span>Tên lĩnh vực mới<em>*</em></span><input id="new-domain-name" required placeholder="Ví dụ: Kỹ năng tự phục vụ" /></label><button type="submit" class="button primary">${icon('plus')}Thêm lĩnh vực</button></form><div class="domain-settings-list" aria-live="polite">${items || '<span class="cell-placeholder">Chưa có lĩnh vực.</span>'}</div></div>`;
   }
 
   function navigate(view) { if (shareMode) return; state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan') renderPlan(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -281,6 +288,19 @@
   function updateObjectivePreview() { const long = $('#objective-long'); const domain = $('#objective-domain'); if (!long || !domain) return; $('#preview-long').textContent = long.value || 'Chưa nhập mục tiêu'; $('#preview-domain').textContent = domain.value.toUpperCase(); const firstList = document.querySelector('.preview-week.open ol'); if (firstList) firstList.innerHTML = draftShortGoals.filter((value) => value.trim()).map((value) => `<li>${esc(value)}</li>`).join(''); const counter = document.querySelector('.objective-textarea small'); if (counter) counter.textContent = `${long.value.length}/500`; }
 
   function openGoalModal(mode, goalId, shortIndex) {
+    const domainInput = $('#goal-dialog-domain');
+    if (domainInput && domainInput.tagName !== 'SELECT') {
+      const domainSelect = document.createElement('select');
+      domainSelect.id = 'goal-dialog-domain';
+      domainInput.replaceWith(domainSelect);
+    }
+    if (!$('#goal-period-field')) {
+      const periodField = document.createElement('label');
+      periodField.className = 'field full';
+      periodField.id = 'goal-period-field';
+      periodField.innerHTML = '<span>Tên thời gian<em>*</em></span><input id="goal-dialog-period-label" placeholder="Ví dụ: Tuần 2" />';
+      $('#goal-status-field').before(periodField);
+    }
     const goal = state.goals.find((item) => item.id === Number(goalId));
     const currentGoals = state.goals.filter((item) => item.childId === state.selectedChildId);
     const isShort = mode === 'short' || mode === 'edit-short';
@@ -290,6 +310,8 @@
     const labels = { domain: 'Tên lĩnh vực', long: 'Mục tiêu dài hạn', short: 'Mục tiêu ngắn hạn', 'edit-long': 'Mục tiêu dài hạn', 'edit-short': 'Mục tiêu ngắn hạn', period: 'Tên thời gian đánh giá' };
     titles['edit-period'] = 'Chỉnh sửa kết quả theo tuần';
     labels['edit-period'] = 'Trạng thái kết quả';
+    labels.domain = 'Lĩnh vực';
+    labels['edit-period'] = 'Tên thời gian';
     $('#goal-dialog-title').textContent = titles[mode];
     $('#goal-dialog-description').textContent = mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
     $('#goal-dialog-mode').value = mode;
@@ -297,12 +319,16 @@
     $('#goal-dialog-short-index').value = shortIndex ?? '';
     $('#goal-dialog-label').textContent = labels[mode];
     $('#goal-dialog-submit').textContent = isEdit ? 'Lưu thay đổi' : 'Lưu';
+    $('#goal-dialog-domain').innerHTML = domains.map((domain) => `<option value="${esc(domain)}">${esc(domain)}</option>`).join('');
     $('#goal-dialog-domain').value = goal?.domain || currentGoals[0]?.domain || domains[0];
     $('#goal-dialog-text').value = mode === 'edit-short' && goal ? goal.shortTerm?.[shortIndex] || '' : mode === 'edit-long' ? goal?.longTerm || '' : '';
     $('#goal-dialog-status').value = isPeriodEdit && goal ? goal.statuses?.[shortIndex] || 'Chưa đạt' : 'Chưa đạt';
     $('#goal-dialog-description').textContent = isPeriodEdit ? 'Chỉ cập nhật trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
-    $('#goal-text-field').hidden = isPeriodEdit;
-    $('#goal-dialog-text').required = !isPeriodEdit;
+    $('#goal-period-field').hidden = !isPeriodEdit;
+    $('#goal-dialog-period-label').value = isPeriodEdit ? state.evaluationPeriods[shortIndex] || weekLabels[shortIndex] || '' : '';
+    $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isPeriodEdit ? 'Cập nhật tên thời gian và trạng thái của tuần đang chọn.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
+    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain';
+    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain';
     $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
     if (isPeriodEdit) $('#goal-domain-field').hidden = true;
@@ -312,7 +338,7 @@
     if (goal && isEdit) parentSelect.value = goal.id;
     $('#goal-modal').classList.toggle('small-edit-modal', isEdit);
     $('#goal-modal').removeAttribute('hidden');
-    (isPeriodEdit ? $('#goal-dialog-status') : $('#goal-dialog-text')).focus();
+    (isPeriodEdit ? $('#goal-dialog-period-label') : mode === 'domain' ? $('#goal-dialog-domain') : $('#goal-dialog-text')).focus();
   }
   function closeGoalModal() { $('#goal-modal').classList.remove('small-edit-modal'); $('#goal-modal').setAttribute('hidden', ''); }
 
@@ -416,18 +442,34 @@
     render();
   });
   document.addEventListener('submit', (event) => {
+    if (event.target.id !== 'domain-settings-form') return;
+    event.preventDefault();
+    const input = $('#new-domain-name');
+    const value = input.value.trim();
+    if (!value || domains.some((domain) => domain.toLowerCase() === value.toLowerCase())) return;
+    domains.push(value);
+    state.domains = [...domains];
+    persist();
+    renderSettings();
+    applyTheme();
+  });
+  document.addEventListener('submit', (event) => {
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();
     const mode = $('#goal-dialog-mode').value;
     const text = $('#goal-dialog-text').value.trim();
+    const selectedDomain = $('#goal-dialog-domain').value.trim();
+    const periodLabel = $('#goal-dialog-period-label').value.trim();
     const status = $('#goal-dialog-status').value;
     const id = Number($('#goal-dialog-id').value);
     const shortIndex = Number($('#goal-dialog-short-index').value);
-    if (mode !== 'edit-period' && !text) return;
+    if (mode === 'domain' && !selectedDomain) return;
+    if (mode !== 'edit-period' && mode !== 'domain' && !text) return;
+    if (mode === 'edit-period' && !periodLabel) return;
     if (mode === 'domain') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: text, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
     } else if (mode === 'long') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: $('#goal-dialog-domain').value.trim() || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: state.evaluationPeriods.map(() => 'Chưa đạt') });
     } else if (mode === 'edit-long') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.longTerm = text;
     } else if (mode === 'short') {
@@ -441,6 +483,10 @@
     } else if (mode === 'edit-period') {
       const goal = state.goals.find((item) => item.id === id);
       if (goal && shortIndex >= 0) goal.statuses[shortIndex] = status;
+      if (shortIndex >= 0 && !state.evaluationPeriods.some((label, index) => index !== shortIndex && label.toLowerCase() === periodLabel.toLowerCase())) {
+        state.evaluationPeriods[shortIndex] = periodLabel;
+        weekLabels = state.evaluationPeriods;
+      }
     }
     persist(); closeGoalModal(); render();
   });

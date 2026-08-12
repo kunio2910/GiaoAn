@@ -415,3 +415,14 @@ html.dark-mode .table-add-button{border-color:#456385;background:#17253a;color:#
 .overview-calendar-days span.is-today.is-scheduled,.overview-calendar-days span.is-today.is-multi-scheduled{background:#fff!important;box-shadow:0 5px 14px rgba(20,90,203,.18),inset 0 0 0 1px #dbe6f5}
 .overview-calendar-days span.is-today>b{color:#145acb!important}
 .overview-calendar-days span.is-today.is-sunday{color:#145acb!important}
+.goals-board .board-secondary-action{color:#fff!important;background:linear-gradient(180deg,#155fd3,#0d4cb6)!important;border-color:#155fd3!important;box-shadow:0 5px 12px rgba(17,87,200,.17)}
+.goals-board .board-secondary-action:hover{color:#fff!important;background:linear-gradient(180deg,#1d6be2,#0d4cb6)!important}
+.domain-settings-section{margin-top:18px}
+.domain-settings-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:18px}
+.domain-settings-form .field{margin:0}
+.domain-settings-form .button{min-height:42px;white-space:nowrap}
+.domain-settings-list{display:grid;gap:8px;margin-top:16px}
+.domain-settings-item{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #dfe7f2;border-radius:9px;background:#f8fbff;color:#24447f;font-size:13px}
+.domain-settings-item i{width:8px;height:8px;border-radius:50%;background:#7b44d7;flex:none}
+@media(max-width:560px){.domain-settings-form{grid-template-columns:1fr}.domain-settings-form .button{width:100%}}
+.dark-mode .domain-settings-item{border-color:#3a4b66;background:#14253c;color:#dce8ff}
