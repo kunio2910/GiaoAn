@@ -1,5 +1,5 @@
 (function () {
-  const storageKey = 'giaoan-child-plans-v3';
+  const storageKey = 'giaoan-child-plans-v4';
   const themeStorageKey = 'giaoan-theme';
   let weekLabels = ['Tuần 1 - 2', 'Tuần 3 - 4', 'Tuần 5 - 6', 'Tuần 7 - 8'];
   const statuses = ['Đạt', 'Manh nha', 'Chưa đạt'];
@@ -72,8 +72,8 @@
   const shareChildSlug = (() => { const value = new URLSearchParams(window.location.search).get('share'); return value?.trim().toLowerCase() || null; })();
   const shareMode = shareChildSlug !== null;
   let darkMode = localStorage.getItem(themeStorageKey) === 'dark';
-  const defaultShortGoals = ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút (có đổi trò chơi).'];
-  const defaultLongTerm = 'Duy trì tương tác với giáo viên 5–10 phút';
+  const defaultShortGoals = [''];
+  const defaultLongTerm = '';
   let draftShortGoals = [...defaultShortGoals];
   let draftLongTerm = defaultLongTerm;
   const $ = (selector) => document.querySelector(selector);
@@ -336,7 +336,7 @@
     const shortRows = draftShortGoals.map((value, index) => `<div class="short-goal-edit-row"><span class="drag-dots">⠿</span><span class="goal-number">${index + 1}.</span><input data-short-goal="${index}" value="${esc(value)}" placeholder="Mục tiêu ngắn hạn ${index + 1}" /><button type="button" data-remove-short="${index}" aria-label="Xóa mục tiêu">${icon('trash')}</button></div>`).join('');
     const previewWeeks = weekLabels.map((label, index) => `<div class="preview-week ${index === 0 ? 'open' : ''}"><button type="button" class="preview-week-toggle" data-preview-week="${index}"><span>${label}</span>${icon('chevron')}</button><ol>${index === 0 ? draftShortGoals.filter(Boolean).map((value) => `<li>${esc(value)}</li>`).join('') : ''}</ol></div>`).join('');
     const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div><button type="button" class="button" data-view="plan">Hủy</button><button type="submit" form="objective-form" class="button primary">Lưu</button></div>`;
-    $('#screen-objective').innerHTML = `<header class="objective-header"><div class="objective-heading"><button type="button" class="back-button" data-view="plan" aria-label="Quay lại">${icon('back')}</button><div><h1>Thêm mục tiêu phát triển</h1><div class="breadcrumb">Kế hoạch giáo dục <span>›</span> Mục tiêu phát triển <span>›</span> Thêm mới</div></div></div>${actions}</header><div class="objective-layout"><main><form id="objective-form" class="objective-form-card"><section class="objective-section"><h2>1. LĨNH VỰC <em>*</em></h2>${selectField('', 'objective-domain', domainOptions, domains[0])}<small class="field-hint">Chọn lĩnh vực phát triển phù hợp với mục tiêu.</small></section><section class="objective-section"><h2>2. MỤC TIÊU DÀI HẠN <em>*</em></h2><p class="objective-description">Nhập mục tiêu dài hạn cần đạt được trong giai đoạn kế hoạch (2 tháng).</p><label class="field objective-textarea"><span class="sr-only">Mục tiêu dài hạn</span><textarea id="objective-long" required placeholder="Ví dụ: Duy trì tương tác với giáo viên 5–10 phút">Duy trì tương tác với giáo viên 5–10 phút</textarea><small>37/500</small></label><small class="field-hint">Ví dụ: Duy trì tương tác với giáo viên 5–10 phút.</small></section><section class="objective-section short-section"><h2>3. MỤC TIÊU NGẮN HẠN <em>*</em></h2><p class="objective-description">Nhập các mục tiêu ngắn hạn cụ thể theo từng giai đoạn.</p><div class="week-tabs">${weekLabels.map((label, index) => `<button type="button" class="week-tab ${index === 0 ? 'active' : ''}" data-week-tab="${index}">${label}</button>`).join('')}</div><div class="short-goal-list"><div class="short-list-title">Danh sách mục tiêu ngắn hạn</div>${shortRows}</div><div class="short-list-footer"><button type="button" class="outline-button" data-add-short>${icon('plus')}Thêm mục tiêu</button><span>${draftShortGoals.length}/10 mục tiêu</span></div></section><p class="required-note"><em>*</em> Thông tin bắt buộc phải nhập</p></form></main><aside class="objective-preview"><div class="preview-heading">${icon('eye')}XEM TRƯỚC</div><div class="preview-body"><span class="preview-label">Lĩnh vực</span><span class="domain-pill" id="preview-domain">${domains[0].toUpperCase()}</span><h3>Mục tiêu dài hạn</h3><p id="preview-long">Duy trì tương tác với giáo viên 5–10 phút</p><h3>Mục tiêu ngắn hạn</h3><div class="preview-weeks">${previewWeeks}</div></div></aside></div>`;
+    $('#screen-objective').innerHTML = `<header class="objective-header"><div class="objective-heading"><button type="button" class="back-button" data-view="plan" aria-label="Quay lại">${icon('back')}</button><div><h1>Thêm mục tiêu phát triển</h1><div class="breadcrumb">Kế hoạch giáo dục <span>›</span> Mục tiêu phát triển <span>›</span> Thêm mới</div></div></div>${actions}</header><div class="objective-layout"><main><form id="objective-form" class="objective-form-card"><section class="objective-section"><h2>1. LĨNH VỰC <em>*</em></h2>${selectField('', 'objective-domain', domainOptions, domains[0])}<small class="field-hint">Chọn lĩnh vực phát triển phù hợp với mục tiêu.</small></section><section class="objective-section"><h2>2. MỤC TIÊU DÀI HẠN <em>*</em></h2><p class="objective-description">Nhập mục tiêu dài hạn cần đạt được trong giai đoạn kế hoạch (2 tháng).</p><label class="field objective-textarea"><span class="sr-only">Mục tiêu dài hạn</span><textarea id="objective-long" required placeholder="Ví dụ: Duy trì tương tác với giáo viên 5–10 phút">${esc(draftLongTerm)}</textarea><small>${draftLongTerm.length}/500</small></label><small class="field-hint">Ví dụ: Duy trì tương tác với giáo viên 5–10 phút.</small></section><section class="objective-section short-section"><h2>3. MỤC TIÊU NGẮN HẠN <em>*</em></h2><p class="objective-description">Nhập các mục tiêu ngắn hạn cụ thể theo từng giai đoạn.</p><div class="week-tabs">${weekLabels.map((label, index) => `<button type="button" class="week-tab ${index === 0 ? 'active' : ''}" data-week-tab="${index}">${label}</button>`).join('')}</div><div class="short-goal-list"><div class="short-list-title">Danh sách mục tiêu ngắn hạn</div>${shortRows}</div><div class="short-list-footer"><button type="button" class="outline-button" data-add-short>${icon('plus')}Thêm mục tiêu</button><span>${draftShortGoals.length}/10 mục tiêu</span></div></section><p class="required-note"><em>*</em> Thông tin bắt buộc phải nhập</p></form></main><aside class="objective-preview"><div class="preview-heading">${icon('eye')}XEM TRƯỚC</div><div class="preview-body"><span class="preview-label">Lĩnh vực</span><span class="domain-pill" id="preview-domain">${domains[0].toUpperCase()}</span><h3>Mục tiêu dài hạn</h3><p id="preview-long">${esc(draftLongTerm) || 'Chưa nhập mục tiêu'}</p><h3>Mục tiêu ngắn hạn</h3><div class="preview-weeks">${previewWeeks}</div></div></aside></div>`;
   }
 
   function renderObjective() {
@@ -736,11 +736,18 @@
       if (previousDomain !== domainName) delete state.domainIcons[previousDomain];
       state.domainIcons[domainName] = state.domainIcons?.[domainName] || previousIcon;
     } else if (mode === 'long') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
+      const goalDomain = selectedDomain || domains[0];
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: goalDomain, longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
+      const hiddenDomains = hiddenPlanNewDomainsForChild(state.selectedChildId);
+      if (hiddenDomains.includes(goalDomain)) {
+        const childKey = String(state.selectedChildId);
+        planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== goalDomain);
+        persistPlanNewHiddenDomains();
+      }
     } else if (mode === 'edit-long') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.longTerm = text;
     } else if (mode === 'short') {
-      const goal = state.goals.find((item) => item.id === Number($('#goal-dialog-parent').value)); if (goal) goal.shortTerm = [...(goal.shortTerm || []), text];
+      const goal = state.goals.find((item) => item.id === Number($('#goal-dialog-parent').value)); if (goal) { goal.shortTerm = [...(goal.shortTerm || []), text]; const hiddenDomains = hiddenPlanNewDomainsForChild(goal.childId); if (hiddenDomains.includes(goal.domain)) { const childKey = String(goal.childId); planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== goal.domain); persistPlanNewHiddenDomains(); } }
     } else if (mode === 'edit-short') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.shortTerm[shortIndex] = text;
     } else if (mode === 'period' && !periodsForChild(state.selectedChildId).includes(text)) {

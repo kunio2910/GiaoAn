@@ -814,6 +814,11 @@ export default function Home() {
       });
       setGoals((items) => items.map((goal) => goal.domain === previousDomain ? { ...goal, domain } : goal));
     } else if (mode === "long") {
+      setPlanNewHiddenDomainsByChild((items) => {
+        const childKey = String(selectedChildId);
+        const current = items[childKey] ?? [];
+        return !domain || !current.includes(domain) ? items : { ...items, [childKey]: current.filter((item) => item !== domain) };
+      });
       setEvaluationPeriodsByChild((items) => items[String(selectedChildId)] ? items : { ...items, [String(selectedChildId)]: [...currentEvaluationPeriods] });
       setGoals((items) => [...items, { id: Math.max(0, ...items.map((item) => item.id)) + 1, childId: selectedChildId, domain: domain || domains[0] || DOMAIN_OPTIONS[0], longTerm: text, shortTerm: [], from: "01/07/2026", to: "30/08/2026", statuses: currentEvaluationPeriods.map(() => "Chưa đạt") }]);
     } else if (mode === "edit-domain" && goalDialog) {
@@ -837,6 +842,8 @@ export default function Home() {
     } else if (mode === "edit-long" && goalDialog?.goalId) {
       setGoals((items) => items.map((goal) => goal.id === goalDialog.goalId ? { ...goal, longTerm: text } : goal));
     } else if (mode === "short" && goalId) {
+      const parentGoal = goals.find((goal) => goal.id === goalId);
+      if (parentGoal) setPlanNewHiddenDomainsByChild((items) => { const childKey = String(parentGoal.childId); const current = items[childKey] ?? []; return current.includes(parentGoal.domain) ? { ...items, [childKey]: current.filter((item) => item !== parentGoal.domain) } : items; });
       setGoals((items) => items.map((goal) => goal.id === goalId ? { ...goal, shortTerm: [...goal.shortTerm, text] } : goal));
     } else if (mode === "edit-short" && goalDialog?.goalId && goalDialog.shortIndex !== undefined) {
       setGoals((items) => items.map((goal) => goal.id === goalDialog.goalId ? { ...goal, shortTerm: goal.shortTerm.map((item, index) => index === goalDialog.shortIndex ? text : item) } : goal));
