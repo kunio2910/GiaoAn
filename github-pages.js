@@ -1,5 +1,5 @@
 (function () {
-  const storageKey = 'giaoan-child-plans-v2';
+  const storageKey = 'giaoan-child-plans-v4';
   const themeStorageKey = 'giaoan-theme';
   let weekLabels = ['Tuần 1 - 2', 'Tuần 3 - 4', 'Tuần 5 - 6', 'Tuần 7 - 8'];
   const statuses = ['Đạt', 'Manh nha', 'Chưa đạt'];
@@ -36,18 +36,9 @@
     domains: [...domains],
     domainIcons: { ...defaultDomainIcons },
     collapsedGoalIds: [],
-    children: [
-      { id: 1, name: 'Nguyễn Khánh Linh', birthday: '07/07/2021', gender: 'Nữ', note: 'Thích hoạt động có âm nhạc.' },
-      { id: 2, name: 'Trần Minh Anh', birthday: '18/03/2021', gender: 'Nam', note: 'Cần nhắc nhẹ khi chuyển hoạt động.' }
-    ],
-    goals: [
-      { id: 1, childId: 1, domain: 'Tương tác xã hội', longTerm: 'Duy trì tương tác với giáo viên 5–10 phút', shortTerm: ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Manh nha', 'Đạt', 'Manh nha', 'Chưa đạt'] },
-      { id: 2, childId: 1, domain: 'Giao tiếp', longTerm: 'Tăng giao tiếp bằng mắt khi được gọi tên', shortTerm: ['Nhìn mặt giáo viên khi được gọi tên.', 'Duy trì giao tiếp mắt 2–3 giây.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Manh nha', 'Manh nha', 'Đạt', 'Đạt'] },
-      { id: 3, childId: 2, domain: 'Chú ý chung', longTerm: 'Nhìn theo người lớn và đồ vật được chỉ dẫn', shortTerm: ['Nhìn theo khi cô chỉ vào đồ vật gần.', 'Luân phiên nhìn người và đồ vật 2–3 lần.'], from: '01/07/2026', to: '30/08/2026', statuses: ['Chưa đạt', 'Manh nha', 'Đạt', 'Đạt'] }
-    ]
+    children: [],
+    goals: []
   };
-  defaults.children = [];
-  defaults.goals = [];
   const loaded = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const normalizePeriods = (value, fallback = weekLabels) => {
     const periods = Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
@@ -57,8 +48,8 @@
   const legacyPeriods = normalizePeriods(loaded?.evaluationPeriods || defaults.evaluationPeriods);
   const rawPeriodsByChild = loaded?.evaluationPeriodsByChild && typeof loaded.evaluationPeriodsByChild === 'object' ? loaded.evaluationPeriodsByChild : {};
   const initialPeriodsByChild = Object.fromEntries(initialChildren.map((child) => [String(child.id), normalizePeriods(rawPeriodsByChild[String(child.id)], legacyPeriods)]));
-  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: legacyPeriods, evaluationPeriodsByChild: initialPeriodsByChild, domains: loaded?.domains || defaults.domains, domainIcons: { ...defaultDomainIcons, ...(loaded?.domainIcons || {}) }, collapsedGoalIds: Array.isArray(loaded?.collapsedGoalIds) ? loaded.collapsedGoalIds : [], children: initialChildren, goals: loaded?.goals || defaults.goals, selectedChildId: initialChildren[0]?.id || 0, view: 'plan-new' };
-  let planNewOpenDomains = {};
+  const state = { ...(loaded && typeof loaded === 'object' ? loaded : {}), evaluationPeriods: legacyPeriods, evaluationPeriodsByChild: initialPeriodsByChild, domains: loaded?.domains || defaults.domains, domainIcons: { ...defaultDomainIcons, ...(loaded?.domainIcons || {}) }, collapsedGoalIds: Array.isArray(loaded?.collapsedGoalIds) ? loaded.collapsedGoalIds : [], planNewOpenDomainsByChild: loaded?.planNewOpenDomainsByChild && typeof loaded.planNewOpenDomainsByChild === 'object' ? loaded.planNewOpenDomainsByChild : {}, planNewOpenDomains: loaded?.planNewOpenDomains && typeof loaded.planNewOpenDomains === 'object' ? loaded.planNewOpenDomains : {}, children: initialChildren, goals: loaded?.goals || defaults.goals, selectedChildId: initialChildren[0]?.id || 0, view: 'plan-new' };
+  let planNewOpenDomains = state.planNewOpenDomainsByChild?.[String(state.selectedChildId)] || state.planNewOpenDomains || {};
   let planNewSearch = '';
   let planNewFilter = '';
   let planNewPendingDomain = '';
@@ -81,8 +72,8 @@
   const shareChildSlug = (() => { const value = new URLSearchParams(window.location.search).get('share'); return value?.trim().toLowerCase() || null; })();
   const shareMode = shareChildSlug !== null;
   let darkMode = localStorage.getItem(themeStorageKey) === 'dark';
-  const defaultShortGoals = ['Ngồi tại bàn 2–3 phút.', 'Ngồi học 5 phút.', 'Duy trì hoạt động 10 phút (có đổi trò chơi).'];
-  const defaultLongTerm = 'Duy trì tương tác với giáo viên 5–10 phút';
+  const defaultShortGoals = [''];
+  const defaultLongTerm = '';
   let draftShortGoals = [...defaultShortGoals];
   let draftLongTerm = defaultLongTerm;
   const $ = (selector) => document.querySelector(selector);
@@ -92,6 +83,7 @@
   const domainIconBadge = (value, size = '') => { const option = domainIconOption(value); return `<span class="domain-icon-badge ${option.tone}">${icon(option.value, size ? `icon-${size}` : '')}</span>`; };
   const domainIconPicker = (selected, action = 'select-domain-icon') => `<div class="domain-icon-picker" role="group" aria-label="Chọn icon lĩnh vực">${domainIconOptions.map((option) => `<button type="button" class="domain-icon-choice ${option.value === selected ? 'selected' : ''}" data-action="${action}" data-domain-icon="${option.value}" aria-label="${option.label}" title="${option.label}">${domainIconBadge(option.value)}</button>`).join('')}</div>`;
   const initials = (name) => String(name).split(' ').map((part) => part[0]).slice(-2).join('');
+  const calendarChildName = (name) => String(name || '').trim().split(/\s+/).filter(Boolean).slice(-2).join(' ');
   const persistentData = () => {
     const data = { ...state };
     delete data.view;
@@ -173,10 +165,34 @@
 
   const defaultPlanInfo = { planner: 'Nguyễn Thị Vành Khuyên', planDate: '30/06/2026', evaluationDates: '30/07/2026 và 30/08/2026' };
   const getPlanInfo = (child) => ({ ...defaultPlanInfo, ...(child?.planInfo || {}) });
+  const calculateAge = (value, today = new Date()) => {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(value || '')) || /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+    if (!match) return 'Chưa xác định';
+    const year = match[1].length === 4 ? Number(match[1]) : Number(match[3]);
+    const month = Number(match[2]) - 1;
+    const day = match[1].length === 4 ? Number(match[3]) : Number(match[1]);
+    const birthDate = new Date(year, month, day);
+    if (Number.isNaN(birthDate.getTime()) || birthDate > today) return 'Chưa xác định';
+    let years = today.getFullYear() - year;
+    let months = today.getMonth() - month;
+    if (today.getDate() < day) months -= 1;
+    if (months < 0) { years -= 1; months += 12; }
+    return years >= 0 ? (years > 0 ? `${years} tuổi ${months} tháng` : `${months} tháng`) : 'Chưa xác định';
+  };
   function childSummaryMarkup(child, editable = true) {
     const info = getPlanInfo(child);
-    return `<section class="child-summary">${avatar(child)}<div class="summary-name"><strong>${esc(child.name)}</strong><span>${icon('calendar')}Ngày sinh: ${esc(child.birthday)}</span><span>${icon('user')}Tuổi thực: 1 tuổi 11 tháng</span></div><div class="summary-meta"><span>${icon('user')}Người lập kế hoạch: ${esc(info.planner)}</span><span>${icon('calendar')}Ngày lập kế hoạch: ${esc(info.planDate)}</span>${editable ? `<button type="button" class="summary-edit-button" data-action="edit-plan-info">${icon('edit')}Chỉnh sửa thông tin</button>` : ''}</div><div class="evaluation-summary"><strong>${icon('calendar')}Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>${esc(info.evaluationDates)}</b></div></section>`;
+    return `<section class="child-summary">${avatar(child)}<div class="summary-name"><strong>${esc(child.name)}</strong><span>${icon('calendar')}Ngày sinh: ${esc(child.birthday)}</span><span>${icon('user')}Tuổi thực: ${esc(calculateAge(child.birthday))}</span></div><div class="summary-meta"><span>${icon('user')}Người lập kế hoạch: ${esc(info.planner)}</span><span>${icon('calendar')}Ngày lập kế hoạch: ${esc(info.planDate)}</span>${editable ? `<button type="button" class="summary-edit-button" data-action="edit-plan-info">${icon('edit')}Chỉnh sửa thông tin</button>` : ''}</div><div class="evaluation-summary"><strong>${icon('calendar')}Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>${esc(info.evaluationDates)}</b></div></section>`;
   }
+  function shareExportHtml(child, goals) {
+    const periods = periodsForChild(child.id);
+    const glyphs = { target: '◎', group: '♣', eye: '◉', children: '♧', calendar: '▣', note: '▤', overview: '▦', plan: '▥', heart: '♥', star: '★', puzzle: '✦', music: '♫', brain: '◌', hand: '✋' };
+    const statusClass = (status) => status === 'Đạt' ? 'status-achieved' : status === 'Manh nha' ? 'status-emerging' : 'status-not-achieved';
+    const rows = goals.length ? goals.map((goal) => `<tr><td><span class="export-domain-icon">${glyphs[domainIconOption(state.domainIcons?.[goal.domain] || defaultDomainIcons[goal.domain]).value]}</span><strong>${esc(goal.domain)}</strong></td><td>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</td><td><ul>${(goal.shortTerm?.length ? goal.shortTerm : ['Chưa có mục tiêu ngắn hạn']).map((item) => `<li>${esc(item)}</li>`).join('')}</ul></td>${periods.map((_, index) => { const status = goal.statuses?.[index] || 'Chưa đạt'; return `<td><span class="export-status ${statusClass(status)}"><i></i>${esc(status)}</span></td>`; }).join('')}<td>${esc(goal.note || 'Chưa có ghi chú')}</td></tr>`).join('') : `<tr><td colspan="${periods.length + 4}" class="export-empty">Chưa có mục tiêu phát triển</td></tr>`;
+    const achieved = goals.reduce((total, goal) => total + (goal.statuses || []).filter((status) => status === 'Đạt').length, 0);
+    return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Kế hoạch giáo dục - ${esc(child.name)}</title><style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;background:#f6f9ff;color:#10265f;font-family:Arial,"Segoe UI",sans-serif;font-size:12px}.page{max-width:1180px;margin:0 auto}.brand{display:flex;align-items:center;gap:10px;color:#0d4fb8;font-weight:800;font-size:16px;letter-spacing:.04em;padding:8px 0 18px;border-bottom:1px solid #d8e3f4}.brand-mark{width:30px;height:30px;border-radius:10px;background:#e8f1ff;color:#1261d2;display:grid;place-items:center;font-size:20px}.eyebrow{display:block;color:#6581b2;font-size:10px;font-weight:800;letter-spacing:.14em}.hero{padding:20px 0 14px}.hero h1{margin:5px 0;color:#123f91;font-size:28px}.hero p{margin:0;color:#6780aa}.summary{display:grid;grid-template-columns:1.35fr 1fr .9fr;gap:18px;align-items:center;background:#fff;border:1px solid #d7e4f4;border-left:5px solid #1769d4;border-radius:16px;padding:18px 20px;box-shadow:0 8px 22px rgba(42,83,148,.12)}.summary-main strong{display:block;font-size:18px;color:#123f91;margin-bottom:10px}.summary-main span,.summary-meta span{display:block;margin-top:7px}.summary-meta{line-height:1.5}.evaluation{border:1px solid #bfe2d2;background:#f2fbf6;border-radius:12px;padding:14px;color:#126047}.evaluation strong,.evaluation b{display:block;margin-bottom:7px}.metrics{display:flex;gap:26px;padding:15px 0;font-weight:700}.section{background:#fff;border:1px solid #d7e4f4;border-radius:16px;overflow:hidden;box-shadow:0 6px 18px rgba(42,83,148,.08)}.section-head{padding:16px 20px;border-bottom:1px solid #d7e4f4}.section-head h2{margin:4px 0;color:#123f91;font-size:19px}.section-head p{margin:0;color:#7186ab}.table-wrap{overflow:hidden}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#eff5ff;color:#163a82;font-size:11px;text-align:center;padding:12px 8px;border:1px solid #d7e4f4}td{padding:12px 9px;border:1px solid #d7e4f4;vertical-align:top;color:#1b3775;line-height:1.45}td:first-child{width:15%;font-weight:700}td:nth-child(2){width:18%}td:nth-child(3){width:24%}td ul{margin:0;padding-left:17px}.export-domain-icon{display:inline-grid;place-items:center;width:28px;height:28px;margin-right:7px;border-radius:50%;background:#ede5ff;color:#824be5;font-size:18px;vertical-align:middle}.export-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.export-status i{width:11px;height:11px;border-radius:50%;display:inline-block}.status-achieved i{background:#24b15b}.status-emerging i{background:#f5b819}.status-not-achieved i{background:#aeb2b8}.export-empty{text-align:center;color:#7a8baa}.footer{padding:14px 0;color:#6c82a9;text-align:center}@media print{body{background:#fff}.page{max-width:none}.section,.summary{box-shadow:none}}</style></head><body><main class="page"><div class="brand"><span class="brand-mark">◎</span><span>KẾ HOẠCH GIÁO DỤC<small style="display:block;font-size:9px;font-weight:500;letter-spacing:0">Trang chia sẻ hồ sơ trẻ</small></span></div><section class="hero"><span class="eyebrow">HỒ SƠ TRẺ</span><h1>${esc(child.name)}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section><section class="summary"><div class="summary-main"><strong>${esc(child.name)}</strong><span>Ngày sinh: ${esc(child.birthday)}</span><span>Tuổi thực: ${esc(calculateAge(child.birthday))}</span></div><div class="summary-meta"><span>Người lập kế hoạch: ${esc(getPlanInfo(child).planner)}</span><span>Ngày lập kế hoạch: ${esc(getPlanInfo(child).planDate)}</span></div><div class="evaluation"><strong>Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>${esc(getPlanInfo(child).evaluationDates)}</b></div></section><div class="metrics"><span>${goals.length} mục tiêu đang theo dõi</span><span>${achieved} kết quả đạt</span></div><section class="section"><div class="section-head"><span class="eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><div class="table-wrap"><table><thead><tr><th>LĨNH VỰC</th><th>MỤC TIÊU DÀI HẠN</th><th>MỤC TIÊU NGẮN HẠN</th>${periods.map((period) => `<th>${esc(period)}</th>`).join('')}<th>GHI CHÚ</th></tr></thead><tbody>${rows}</tbody></table></div></section><div class="footer">Đường dẫn này chỉ hiển thị thông tin của <strong>${esc(child.name)}</strong>.</div></main></body></html>`;
+  }
+  function exportSharePdf() { const child = selectedChild(); if (!child) { window.alert('Hãy thêm hoặc chọn một hồ sơ trẻ trước khi xuất file.'); return; } const printWindow = window.open('', '_blank'); if (!printWindow) { window.alert('Trình duyệt đang chặn cửa sổ xuất file. Hãy cho phép pop-up rồi thử lại.'); return; } printWindow.document.open(); printWindow.document.write(shareExportHtml(child, state.goals.filter((goal) => goal.childId === child.id))); printWindow.document.close(); printWindow.addEventListener('load', () => { printWindow.focus(); printWindow.print(); }); }
+  function exportShareWord() { const child = selectedChild(); if (!child) { window.alert('Hãy thêm hoặc chọn một hồ sơ trẻ trước khi xuất file.'); return; } const blob = new Blob([`\ufeff${shareExportHtml(child, state.goals.filter((goal) => goal.childId === child.id))}`], { type: 'application/msword' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `Ke-hoach-giao-duc-${childNameSlug(child.name) || 'tre'}.doc`; document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
   function renderSharePage() {
     const main = $('.main-content');
     const child = state.children.find((item) => childNameSlug(item.name) === shareChildSlug);
@@ -222,7 +238,7 @@
     const title = monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
     const todayKey = `${overviewCalendarToday.getFullYear()}-${overviewCalendarToday.getMonth()}-${overviewCalendarToday.getDate()}`;
     const cells = getOverviewCalendarCells(year, month);
-    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>${title}</strong></div><div class="overview-calendar-controls"><button type="button" class="overview-calendar-today" data-calendar-action="today">Hôm nay</button><button type="button" class="overview-calendar-nav" data-calendar-action="previous" aria-label="Tháng trước">${icon('back')}</button><button type="button" class="overview-calendar-nav is-next" data-calendar-action="next" aria-label="Tháng sau">${icon('back')}</button><button type="button" class="overview-calendar-view">Tháng ${icon('chevron')}</button><span class="overview-calendar-icon">${icon('calendar')}</span></div></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; const entries = cell.muted ? [] : scheduleEntriesForDate(cell.date); const isScheduled = entries.length > 0; const classes = [cell.muted ? 'is-muted' : '', isSunday ? 'is-sunday' : '', isScheduled ? 'is-scheduled' : '', entries.length > 1 ? 'is-multi-scheduled' : '', entries.length === 1 ? `schedule-color-${entries[0].color}` : '', isToday ? 'is-today' : ''].filter(Boolean).join(' '); const eventMarkup = entries.length === 1 ? `<small class="calendar-event-name schedule-text-${entries[0].color}">${esc(entries[0].child.name)}</small><small class="calendar-event-time">${esc(entries[0].time)}</small>` : entries.map((entry) => `<small class="calendar-event-name schedule-text-${entry.color}">${esc(entry.child.name)}</small>`).join(''); return `<span class="${classes}" ${isScheduled ? `role="button" tabindex="0" data-calendar-date="${calendarDateKey(cell.date)}"` : ''}><b>${cell.day}</b>${eventMarkup}</span>`; }).join('')}</div></section>`;
+    return `<section class="overview-calendar" aria-label="Lịch kế hoạch"><div class="overview-calendar-head"><div><span class="overview-calendar-kicker">LỊCH KẾ HOẠCH</span><strong>${title}</strong></div><div class="overview-calendar-controls"><button type="button" class="overview-calendar-today" data-calendar-action="today">Hôm nay</button><button type="button" class="overview-calendar-nav" data-calendar-action="previous" aria-label="Tháng trước">${icon('back')}</button><button type="button" class="overview-calendar-nav is-next" data-calendar-action="next" aria-label="Tháng sau">${icon('back')}</button><button type="button" class="overview-calendar-view">Tháng ${icon('chevron')}</button><span class="overview-calendar-icon">${icon('calendar')}</span></div></div><div class="overview-calendar-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join('')}</div><div class="overview-calendar-days">${cells.map((cell, index) => { const key = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.day}`; const isToday = key === todayKey; const isSunday = index % 7 === 6; const entries = cell.muted ? [] : scheduleEntriesForDate(cell.date); const isScheduled = entries.length > 0; const classes = [cell.muted ? 'is-muted' : '', isSunday ? 'is-sunday' : '', isScheduled ? 'is-scheduled' : '', entries.length > 1 ? 'is-multi-scheduled' : '', entries.length === 1 ? `schedule-color-${entries[0].color}` : '', isToday ? 'is-today' : ''].filter(Boolean).join(' '); const eventMarkup = entries.length === 1 ? `<small class="calendar-event-name schedule-text-${entries[0].color}">${esc(calendarChildName(entries[0].child.name))}</small><small class="calendar-event-time">${esc(entries[0].time)}</small>` : entries.map((entry) => `<small class="calendar-event-name schedule-text-${entry.color}">${esc(calendarChildName(entry.child.name))}</small>`).join(''); return `<span class="${classes}" ${isScheduled ? `role="button" tabindex="0" data-calendar-date="${calendarDateKey(cell.date)}"` : ''}><b>${cell.day}</b>${eventMarkup}</span>`; }).join('')}</div></section>`;
   }
   function openCalendarSchedulePopup(dateKey) { const parts = dateKey.split('-').map(Number); const date = new Date(parts[0], parts[1] - 1, parts[2]); const entries = scheduleEntriesForDate(date); $('#calendar-popup-title').textContent = new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date); $('#calendar-popup-list').innerHTML = entries.map((entry) => `<div class="calendar-popup-entry"><i class="schedule-dot schedule-color-${entry.color}"></i><div><strong>${esc(entry.child.name)}</strong><span>${esc(entry.time)}</span></div></div>`).join(''); $('#calendar-schedule-popup').removeAttribute('hidden'); }
   function closeCalendarSchedulePopup() { $('#calendar-schedule-popup').setAttribute('hidden', ''); }
@@ -281,20 +297,20 @@
     $('#screen-plan').innerHTML = `${header('Kế hoạch giáo dục', '', actions)}<div class="plan-toolbar">${childChoiceButtons('Đang xem hồ sơ của', 'plan')}<div class="plan-count"><span class="count-number">${goals.length}</span><span>mục tiêu đang theo dõi</span></div></div>${childSummaryMarkup(child)}<div class="section-title-row"><div><h2>${icon('calendar')}MỤC TIÊU PHÁT TRIỂN</h2></div><div class="mini-legend"><span><i class="dot green"></i>Đạt (Đ)</span><span><i class="dot yellow"></i>Manh nha (MN)</span><span><i class="dot gray"></i>Chưa đạt (CĐ)</span></div></div>${renderGoalsTable(goals, false, child.id)}`;
   }
 
-  function renderPlan() {
-    renderPlanBase();
-    decorateGoalCards();
-  }
+  // Tương thích với các luồng cũ: mọi điều hướng kế hoạch đều dùng màn hình mới.
+  function renderPlan() { renderPlanNew(); }
 
   function renderPlanNew() {
     const screen = $('#screen-plan-new');
+    planNewOpenDomains = state.planNewOpenDomainsByChild?.[String(state.selectedChildId)] || state.planNewOpenDomains || {};
     const child = selectedChild();
-    if (!child) { screen.innerHTML = `<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
+    const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('save')}Lưu`, 'save-plan-new', true)}${button(`${icon('file')}Xuất PDF`, 'print')}</div>`;
+    if (!child) { screen.innerHTML = `${header('Kế hoạch giáo dục', 'Bố cục mới · mục tiêu được tách riêng theo từng trẻ', actions)}<div class="empty-state"><h3>Chưa có hồ sơ trẻ</h3><p>Vào Hồ sơ trẻ để thêm thông tin trẻ mới.</p>${button('Thêm trẻ', 'open-child', true)}</div>`; return; }
     const childGoals = state.goals.filter((goal) => goal.childId === child.id);
     const hiddenDomains = hiddenPlanNewDomainsForChild(child.id);
     const visibleChildGoals = childGoals.filter((goal) => !hiddenDomains.includes(goal.domain));
     const periodLabels = periodsForChild(child.id);
-    const allDomains = [...new Set([...(state.domains || domains), ...childGoals.map((goal) => goal.domain)])].filter((domain) => !hiddenDomains.includes(domain));
+    const allDomains = [...new Set(visibleChildGoals.map((goal) => goal.domain))].filter((domain) => !hiddenDomains.includes(domain));
     const query = planNewSearch.trim().toLowerCase();
     const visibleDomains = allDomains.filter((domain) => {
       if (planNewFilter && planNewFilter !== domain) return false;
@@ -302,7 +318,6 @@
       const domainGoals = childGoals.filter((goal) => goal.domain === domain);
       return `${domain} ${domainGoals.map((goal) => `${goal.longTerm} ${(goal.shortTerm || []).join(' ')}`).join(' ')}`.toLowerCase().includes(query);
     });
-    const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div>${button(`${icon('file')}Xuất PDF`, 'print', true)}</div>`;
     const domainCards = visibleDomains.map((domain, domainIndex) => {
       const domainGoals = childGoals.filter((goal) => goal.domain === domain).filter((goal) => !query || `${goal.longTerm} ${(goal.shortTerm || []).join(' ')}`.toLowerCase().includes(query));
       const open = planNewOpenDomains[domain] ?? domainIndex === 0;
@@ -310,10 +325,10 @@
       const goalCards = domainGoals.map((goal, goalIndex) => {
         const shortGoals = (goal.shortTerm || []).map((item, shortIndex) => `<li><span class="plan-new-bullet"></span><span>${esc(item || 'Chưa nhập mục tiêu')}</span><span class="plan-new-row-actions"><button type="button" data-action="edit-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Sửa mục tiêu ngắn hạn">${icon('edit')}</button><button type="button" class="danger" data-action="delete-short" data-goal-id="${goal.id}" data-short-index="${shortIndex}" aria-label="Xóa mục tiêu ngắn hạn">${icon('trash')}</button></span></li>`).join('');
         const results = periodLabels.map((label, periodIndex) => `<div class="plan-new-period"><div class="plan-new-period-label"><span>${esc(label)}</span><button type="button" data-action="edit-period" data-goal-id="${goal.id}" data-period-index="${periodIndex}" aria-label="Sửa kết quả ${esc(label)}">${icon('edit')}</button></div>${statusMarkup(goal.statuses?.[periodIndex] || 'Chưa đạt', goal.id, periodIndex, false)}</div>`).join('');
-        return `<article class="plan-new-goal"><div class="plan-new-goal-head"><div><span class="plan-new-goal-label">Mục tiêu dài hạn ${String(goalIndex + 1).padStart(2, '0')}</span><h4>${esc(goal.longTerm || 'Chưa nhập mục tiêu dài hạn')}</h4><p>Thời gian áp dụng: ${esc(goal.from || '01/07/2026')} – ${esc(goal.to || '30/08/2026')}</p></div><div class="plan-new-goal-actions"><button class="plan-new-small-action" type="button" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button class="plan-new-small-action danger" type="button" data-action="delete-goal" data-goal-id="${goal.id}" aria-label="Xóa mục tiêu dài hạn">${icon('trash')}</button></div></div><div class="plan-new-goal-content"><section class="plan-new-short-section"><div class="plan-new-section-head"><h5>Mục tiêu ngắn hạn</h5><button class="plan-new-outline-action" type="button" data-action="add-short" data-goal-id="${goal.id}">${icon('plus')}Thêm</button></div>${shortGoals ? `<ul>${shortGoals}</ul>` : '<p class="plan-new-muted">Chưa có mục tiêu ngắn hạn.</p>'}</section><section class="plan-new-result-section"><div class="plan-new-section-head"><div><h5>Kết quả theo tuần</h5><p>Cập nhật trạng thái theo từng giai đoạn</p></div><button class="plan-new-outline-action" type="button" data-action="add-period">${icon('plus')}Thêm thời gian</button></div><div class="plan-new-period-grid">${results}</div></section></div><footer class="plan-new-goal-footer">Ghi chú: ${esc(goal.note || 'Chưa có ghi chú')}</footer></article>`;
+        return `<article class="plan-new-goal"><div class="plan-new-goal-head"><div><span class="plan-new-goal-label">Mục tiêu dài hạn ${String(goalIndex + 1).padStart(2, '0')}</span><h4>${esc(goal.longTerm || 'Chưa nhập mục tiêu dài hạn')}</h4></div><div class="plan-new-goal-actions"><button class="plan-new-small-action" type="button" data-action="edit-long" data-goal-id="${goal.id}">${icon('edit')}Sửa</button><button class="plan-new-small-action" type="button" data-action="open-note" data-goal-id="${goal.id}" aria-label="Ghi chú mục tiêu">${icon('note')}Ghi chú</button><button class="plan-new-small-action danger" type="button" data-action="delete-goal" data-goal-id="${goal.id}" aria-label="Xóa mục tiêu dài hạn">${icon('trash')}</button></div></div><div class="plan-new-goal-content"><section class="plan-new-short-section"><div class="plan-new-section-head"><h5>Mục tiêu ngắn hạn</h5><button class="plan-new-outline-action" type="button" data-action="add-short" data-goal-id="${goal.id}">${icon('plus')}Thêm</button></div>${shortGoals ? `<ul>${shortGoals}</ul>` : '<p class="plan-new-muted">Chưa có mục tiêu ngắn hạn.</p>'}</section><section class="plan-new-result-section"><div class="plan-new-section-head"><div><h5>Kết quả theo tuần</h5><p>Cập nhật trạng thái theo từng giai đoạn</p></div><button class="plan-new-outline-action" type="button" data-action="add-period">${icon('plus')}Thêm thời gian</button></div><div class="plan-new-period-grid">${results}</div></section></div><footer class="plan-new-goal-footer">Ghi chú: ${esc(goal.note || 'Chưa có ghi chú')}</footer></article>`;
       }).join('');
       const empty = `<div class="plan-new-empty">${icon('target')}<div><strong>${query ? 'Không tìm thấy mục tiêu phù hợp' : 'Chưa có mục tiêu dài hạn'}</strong><span>${query ? 'Thử từ khóa khác hoặc xóa bộ lọc.' : 'Bắt đầu bằng cách thêm mục tiêu dài hạn cho lĩnh vực này.'}</span></div></div>`;
-      return `<article class="plan-new-domain ${open ? 'is-open' : 'is-collapsed'}"><header class="plan-new-domain-head"><div class="plan-new-domain-title">${domainIconBadge(state.domainIcons?.[domain] || defaultDomainIcons[domain])}<div><span class="plan-new-eyebrow">Lĩnh vực</span><h3>${esc(domain)}</h3><p>${childGoals.filter((goal) => goal.domain === domain).length} mục tiêu dài hạn <span>·</span> ${childGoals.filter((goal) => goal.domain === domain).length * periodLabels.length} kết quả theo tuần</p></div></div><div class="plan-new-domain-actions"><button class="plan-new-icon-action" type="button" data-action="edit-domain" data-goal-id="${targetGoal?.id || 0}" aria-label="Sửa lĩnh vực ${esc(domain)}">${icon('edit')}</button><button class="plan-new-icon-action danger" type="button" data-action="delete-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Xóa lĩnh vực ${esc(domain)}">${icon('trash')}</button><button class="plan-new-toggle" type="button" data-action="toggle-new-domain" data-new-domain="${esc(domain)}" aria-expanded="${open}" aria-label="${open ? 'Thu gọn' : 'Mở rộng'} lĩnh vực ${esc(domain)}">${icon('chevron')}</button></div></header>${open ? `<div class="plan-new-domain-body">${goalCards || empty}<div class="plan-new-domain-footer"><span>${childGoals.filter((goal) => goal.domain === domain).length} mục tiêu dài hạn</span><button class="plan-new-primary-small" type="button" data-action="add-long" data-plan-new-domain="${esc(domain)}">${icon('plus')}Thêm mục tiêu dài hạn</button></div></div>` : ''}</article>`;
+      return `<article class="plan-new-domain ${open ? 'is-open' : 'is-collapsed'}"><header class="plan-new-domain-head" data-action="toggle-new-domain" data-new-domain="${esc(domain)}" role="button" tabindex="0" aria-expanded="${open}"><div class="plan-new-domain-title">${domainIconBadge(state.domainIcons?.[domain] || defaultDomainIcons[domain])}<div><span class="plan-new-eyebrow">Lĩnh vực</span><h3>${esc(domain)}</h3><p>${childGoals.filter((goal) => goal.domain === domain).length} mục tiêu dài hạn <span>·</span> ${childGoals.filter((goal) => goal.domain === domain).length * periodLabels.length} kết quả theo tuần</p></div></div><div class="plan-new-domain-actions"><button class="plan-new-icon-action" type="button" data-action="edit-domain" data-goal-id="${targetGoal?.id || 0}" aria-label="Sửa lĩnh vực ${esc(domain)}">${icon('edit')}</button><button class="plan-new-icon-action danger" type="button" data-action="delete-domain-setting" data-domain-setting-name="${esc(domain)}" aria-label="Xóa lĩnh vực ${esc(domain)}">${icon('trash')}</button><button class="plan-new-toggle" type="button" data-action="toggle-new-domain" data-new-domain="${esc(domain)}" aria-expanded="${open}" aria-label="${open ? 'Thu gọn' : 'Mở rộng'} lĩnh vực ${esc(domain)}">${icon('chevron')}</button></div></header>${open ? `<div class="plan-new-domain-body">${goalCards || empty}<div class="plan-new-domain-footer"><span>${childGoals.filter((goal) => goal.domain === domain).length} mục tiêu dài hạn</span><button class="plan-new-primary-small" type="button" data-action="add-long" data-plan-new-domain="${esc(domain)}">${icon('plus')}Thêm mục tiêu dài hạn</button></div></div>` : ''}</article>`;
     }).join('');
     screen.innerHTML = `${header('Kế hoạch giáo dục', 'Bố cục mới · mục tiêu được tách riêng theo từng trẻ', actions)}<section class="plan-new-child-switcher"><div><span>Đang xem hồ sơ của</span>${childChoiceButtons('Chọn trẻ', 'plan-new')}</div><div class="plan-new-following-count"><strong>${visibleChildGoals.length}</strong><span>mục tiêu đang theo dõi</span></div></section>${childSummaryMarkup(child)}<div class="plan-new-section-title"><div><h2>${icon('calendar')}MỤC TIÊU PHÁT TRIỂN</h2><p>Thiết lập và theo dõi mục tiêu riêng cho ${esc(child.name)}.</p></div><div class="mini-legend"><span><i class="dot green"></i>Đạt (Đ)</span><span><i class="dot yellow"></i>Manh nha (MN)</span><span><i class="dot gray"></i>Chưa đạt (CĐ)</span></div></div><section class="plan-new-board"><div class="plan-new-toolbar"><div class="plan-new-search">${icon('overview')}<input type="search" data-plan-new-search value="${esc(planNewSearch)}" placeholder="Tìm kiếm lĩnh vực, mục tiêu..." aria-label="Tìm kiếm lĩnh vực, mục tiêu" /></div><select data-plan-new-domain-filter aria-label="Lọc theo lĩnh vực"><option value="">Tất cả lĩnh vực</option>${allDomains.map((domain) => `<option value="${esc(domain)}" ${domain === planNewFilter ? 'selected' : ''}>${esc(domain)}</option>`).join('')}</select><span class="plan-new-toolbar-count"><strong>${visibleDomains.length}</strong> lĩnh vực</span><button class="button primary" type="button" data-action="add-domain">${icon('plus')}Thêm lĩnh vực</button></div><div class="plan-new-board-actions"><button class="outline-button compact" type="button" data-action="collapse-new-domains">${icon('chevron')}Thu gọn tất cả</button><button class="outline-button compact" type="button" data-action="expand-new-domains">${icon('chevron')}Mở tất cả</button></div><div class="plan-new-domain-list">${domainCards || `<div class="plan-new-no-results">${icon('target')}<strong>Không tìm thấy lĩnh vực hoặc mục tiêu</strong><span>Thử từ khóa khác hoặc xóa bộ lọc để xem lại toàn bộ dữ liệu.</span></div>`}</div><footer class="plan-new-footer"><span>Hiển thị ${visibleDomains.length} lĩnh vực · ${visibleChildGoals.length} mục tiêu dài hạn</span><span>Gợi ý: mở từng lĩnh vực để thao tác nhanh, tránh màn hình quá dày.</span></footer></section>`;
   }
@@ -346,7 +361,7 @@
     const shortRows = draftShortGoals.map((value, index) => `<div class="short-goal-edit-row"><span class="drag-dots">⠿</span><span class="goal-number">${index + 1}.</span><input data-short-goal="${index}" value="${esc(value)}" placeholder="Mục tiêu ngắn hạn ${index + 1}" /><button type="button" data-remove-short="${index}" aria-label="Xóa mục tiêu">${icon('trash')}</button></div>`).join('');
     const previewWeeks = weekLabels.map((label, index) => `<div class="preview-week ${index === 0 ? 'open' : ''}"><button type="button" class="preview-week-toggle" data-preview-week="${index}"><span>${label}</span>${icon('chevron')}</button><ol>${index === 0 ? draftShortGoals.filter(Boolean).map((value) => `<li>${esc(value)}</li>`).join('') : ''}</ol></div>`).join('');
     const actions = `<div class="topbar-actions"><div class="date-pill">30/06/2026 ${icon('calendar')}</div><button type="button" class="button" data-view="plan">Hủy</button><button type="submit" form="objective-form" class="button primary">Lưu</button></div>`;
-    $('#screen-objective').innerHTML = `<header class="objective-header"><div class="objective-heading"><button type="button" class="back-button" data-view="plan" aria-label="Quay lại">${icon('back')}</button><div><h1>Thêm mục tiêu phát triển</h1><div class="breadcrumb">Kế hoạch giáo dục <span>›</span> Mục tiêu phát triển <span>›</span> Thêm mới</div></div></div>${actions}</header><div class="objective-layout"><main><form id="objective-form" class="objective-form-card"><section class="objective-section"><h2>1. LĨNH VỰC <em>*</em></h2>${selectField('', 'objective-domain', domainOptions, domains[0])}<small class="field-hint">Chọn lĩnh vực phát triển phù hợp với mục tiêu.</small></section><section class="objective-section"><h2>2. MỤC TIÊU DÀI HẠN <em>*</em></h2><p class="objective-description">Nhập mục tiêu dài hạn cần đạt được trong giai đoạn kế hoạch (2 tháng).</p><label class="field objective-textarea"><span class="sr-only">Mục tiêu dài hạn</span><textarea id="objective-long" required placeholder="Ví dụ: Duy trì tương tác với giáo viên 5–10 phút">Duy trì tương tác với giáo viên 5–10 phút</textarea><small>37/500</small></label><small class="field-hint">Ví dụ: Duy trì tương tác với giáo viên 5–10 phút.</small></section><section class="objective-section short-section"><h2>3. MỤC TIÊU NGẮN HẠN <em>*</em></h2><p class="objective-description">Nhập các mục tiêu ngắn hạn cụ thể theo từng giai đoạn.</p><div class="week-tabs">${weekLabels.map((label, index) => `<button type="button" class="week-tab ${index === 0 ? 'active' : ''}" data-week-tab="${index}">${label}</button>`).join('')}</div><div class="short-goal-list"><div class="short-list-title">Danh sách mục tiêu ngắn hạn</div>${shortRows}</div><div class="short-list-footer"><button type="button" class="outline-button" data-add-short>${icon('plus')}Thêm mục tiêu</button><span>${draftShortGoals.length}/10 mục tiêu</span></div></section><p class="required-note"><em>*</em> Thông tin bắt buộc phải nhập</p></form></main><aside class="objective-preview"><div class="preview-heading">${icon('eye')}XEM TRƯỚC</div><div class="preview-body"><span class="preview-label">Lĩnh vực</span><span class="domain-pill" id="preview-domain">${domains[0].toUpperCase()}</span><h3>Mục tiêu dài hạn</h3><p id="preview-long">Duy trì tương tác với giáo viên 5–10 phút</p><h3>Mục tiêu ngắn hạn</h3><div class="preview-weeks">${previewWeeks}</div></div></aside></div>`;
+    $('#screen-objective').innerHTML = `<header class="objective-header"><div class="objective-heading"><button type="button" class="back-button" data-view="plan" aria-label="Quay lại">${icon('back')}</button><div><h1>Thêm mục tiêu phát triển</h1><div class="breadcrumb">Kế hoạch giáo dục <span>›</span> Mục tiêu phát triển <span>›</span> Thêm mới</div></div></div>${actions}</header><div class="objective-layout"><main><form id="objective-form" class="objective-form-card"><section class="objective-section"><h2>1. LĨNH VỰC <em>*</em></h2>${selectField('', 'objective-domain', domainOptions, domains[0])}<small class="field-hint">Chọn lĩnh vực phát triển phù hợp với mục tiêu.</small></section><section class="objective-section"><h2>2. MỤC TIÊU DÀI HẠN <em>*</em></h2><p class="objective-description">Nhập mục tiêu dài hạn cần đạt được trong giai đoạn kế hoạch (2 tháng).</p><label class="field objective-textarea"><span class="sr-only">Mục tiêu dài hạn</span><textarea id="objective-long" required placeholder="Ví dụ: Duy trì tương tác với giáo viên 5–10 phút">${esc(draftLongTerm)}</textarea><small>${draftLongTerm.length}/500</small></label><small class="field-hint">Ví dụ: Duy trì tương tác với giáo viên 5–10 phút.</small></section><section class="objective-section short-section"><h2>3. MỤC TIÊU NGẮN HẠN <em>*</em></h2><p class="objective-description">Nhập các mục tiêu ngắn hạn cụ thể theo từng giai đoạn.</p><div class="week-tabs">${weekLabels.map((label, index) => `<button type="button" class="week-tab ${index === 0 ? 'active' : ''}" data-week-tab="${index}">${label}</button>`).join('')}</div><div class="short-goal-list"><div class="short-list-title">Danh sách mục tiêu ngắn hạn</div>${shortRows}</div><div class="short-list-footer"><button type="button" class="outline-button" data-add-short>${icon('plus')}Thêm mục tiêu</button><span>${draftShortGoals.length}/10 mục tiêu</span></div></section><p class="required-note"><em>*</em> Thông tin bắt buộc phải nhập</p></form></main><aside class="objective-preview"><div class="preview-heading">${icon('eye')}XEM TRƯỚC</div><div class="preview-body"><span class="preview-label">Lĩnh vực</span><span class="domain-pill" id="preview-domain">${domains[0].toUpperCase()}</span><h3>Mục tiêu dài hạn</h3><p id="preview-long">${esc(draftLongTerm) || 'Chưa nhập mục tiêu'}</p><h3>Mục tiêu ngắn hạn</h3><div class="preview-weeks">${previewWeeks}</div></div></aside></div>`;
   }
 
   function renderObjective() {
@@ -390,7 +405,9 @@
     $('#screen-settings').innerHTML = `${header('Cài đặt', 'Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục')}<div class="settings-card"><div class="settings-heading"><div class="settings-icon">${icon('settings')}</div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><label class="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input type="checkbox" data-theme-toggle aria-label="Giao diện tối" /></label></div><div class="settings-card domain-settings-section"><div class="settings-heading"><div class="settings-icon">${icon('target')}</div><div><h2>Quản lý lĩnh vực</h2><p>Đặt tên và chọn icon riêng cho từng lĩnh vực phát triển.</p></div></div><form id="domain-settings-form" class="domain-settings-form"><label class="field"><span>Tên lĩnh vực mới<em>*</em></span><input id="new-domain-name" required placeholder="Ví dụ: Kỹ năng tự phục vụ" /></label><label class="field domain-settings-icon-field"><span>Icon lĩnh vực</span><div id="new-domain-icon-picker">${domainIconPicker(domainIconOptions[0].value, 'select-new-domain-icon')}</div><input type="hidden" id="new-domain-icon" value="${domainIconOptions[0].value}" /></label><button type="submit" class="button primary">${icon('plus')}Thêm lĩnh vực</button></form><div class="domain-settings-list" aria-live="polite">${items || '<span class="cell-placeholder">Chưa có lĩnh vực.</span>'}</div></div>`;
   }
 
-  function navigate(view) { if (shareMode) return; state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan') renderPlan(); if (view === 'plan-new') renderPlanNew(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  const renderSettingsBase = renderSettings;
+  renderSettings = () => { renderSettingsBase(); const child = selectedChild(); const toolbar = $('#screen-settings .topbar'); if (toolbar) toolbar.insertAdjacentHTML('afterend', `<div class="settings-card export-settings-card"><div class="settings-heading"><div class="settings-icon export-settings-icon">${icon('file')}</div><div><h2>Xuất hồ sơ chia sẻ</h2><p>Xuất nội dung giống màn hình share của ${esc(child?.name || 'trẻ đang chọn')}.</p></div></div><div class="export-settings-actions"><button type="button" class="button primary" data-action="export-share-pdf" ${child ? '' : 'disabled'}>${icon('file')}Xuất PDF</button><button type="button" class="button" data-action="export-share-word" ${child ? '' : 'disabled'}>${icon('file')}Xuất Word</button></div>${child ? '' : '<small class="settings-help-text">Hãy thêm hoặc chọn một hồ sơ trẻ trước khi xuất file.</small>'}</div>`); };
+  function navigate(view) { if (view === 'plan') view = 'plan-new'; if (shareMode) return; state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan-new') renderPlanNew(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function ensureChildColorField() { if ($('#child-color')) return; const genderField = $('#child-gender')?.closest('.field'); if (!genderField) return; const field = document.createElement('label'); field.className = 'field'; field.innerHTML = '<span>Màu lịch dạy</span><div class="color-select-row"><span id="child-color-swatch" class="schedule-color-swatch blue" aria-hidden="true"></span><div class="select-wrap"><select id="child-color"><option value="blue">Xanh dương</option><option value="purple">Tím</option><option value="teal">Xanh ngọc</option><option value="orange">Cam</option><option value="pink">Hồng</option><option value="green">Xanh lá</option></select>' + icon('chevron') + '</div></div>'; genderField.after(field); }
   function openChildModal(id) { const child = id ? childById(id) : null; const teachingDays = Array.isArray(child?.teachingDays) ? child.teachingDays : []; ensureChildColorField(); const color = child?.color || scheduleColorOptions[0].value; $('#child-modal-title').textContent = child ? 'Chỉnh sửa hồ sơ trẻ' : 'Thêm trẻ mới'; $('#child-id').value = child?.id || ''; $('#child-name').value = child?.name || ''; $('#child-birthday').value = birthdayInputValue(child?.birthday || ''); $('#child-gender').value = child?.gender || 'Nữ'; $('#child-color').value = color; $('#child-color-swatch').className = `schedule-color-swatch ${color}`; $('#child-note').value = child?.note || ''; $('#child-start-time').value = child?.teachingStartTime || ''; $('#child-end-time').value = child?.teachingEndTime || ''; $('#child-schedule-error').setAttribute('hidden', ''); document.querySelectorAll('[data-teaching-day]').forEach((input) => { input.checked = teachingDays.includes(Number(input.value)); }); $('#child-modal').removeAttribute('hidden'); $('#child-name').focus(); }
   function closeChildModal() { $('#child-modal').setAttribute('hidden', ''); }
@@ -461,7 +478,7 @@
     const labels = { domain: 'Tên lĩnh vực', long: 'Mục tiêu dài hạn', short: 'Mục tiêu ngắn hạn', 'edit-long': 'Mục tiêu dài hạn', 'edit-short': 'Mục tiêu ngắn hạn', period: 'Tên thời gian đánh giá' };
     titles['edit-period'] = 'Chỉnh sửa kết quả theo tuần';
     labels['edit-period'] = 'Trạng thái kết quả';
-    labels.domain = 'Lĩnh vực';
+    labels.domain = 'Mục tiêu dài hạn';
     labels['edit-period'] = 'Tên thời gian';
     $('#goal-dialog-title').textContent = titles[mode];
     $('#goal-dialog-description').textContent = mode === 'domain' ? 'Chọn lĩnh vực đã được cấu hình trong Cài đặt.' : isSettingsDomainEdit ? 'Cập nhật tên và icon hiển thị của lĩnh vực.' : isDomainEdit ? 'Cập nhật nhanh toàn bộ thông tin của lĩnh vực này.' : mode === 'period' ? 'Thêm một mốc thời gian để theo dõi kết quả.' : 'Thông tin sẽ được hiển thị đồng thời ở Kế hoạch giáo dục và Tổng quan.';
@@ -495,9 +512,9 @@
     $('#goal-edit-note-field').hidden = !isDomainEdit;
     $('#goal-dialog-domain').closest('#goal-domain-field').hidden = isDomainEdit || isSettingsDomainEdit || !(mode === 'domain' || mode === 'long');
     $('#goal-parent-field').hidden = isDomainEdit || isSettingsDomainEdit || !isShort || isEdit;
-    $('#goal-text-field').hidden = isPeriodEdit || mode === 'domain' || isDomainEdit || isSettingsDomainEdit;
+    $('#goal-text-field').hidden = isPeriodEdit || isDomainEdit || isSettingsDomainEdit;
     // Khi sửa cả lĩnh vực, ô nội dung chung bị ẩn; không để native validation chặn submit form.
-    $('#goal-dialog-text').required = !isPeriodEdit && mode !== 'domain' && !isSettingsDomainEdit && !isDomainEdit;
+    $('#goal-dialog-text').required = !isPeriodEdit && !isSettingsDomainEdit && !isDomainEdit;
     $('#goal-status-field').hidden = !isPeriodEdit;
     $('#goal-domain-field').hidden = !(mode === 'domain' || mode === 'long');
     if (isPeriodEdit) $('#goal-domain-field').hidden = true;
@@ -505,6 +522,7 @@
     const parentSelect = $('#goal-dialog-parent');
     parentSelect.innerHTML = currentGoals.map((item) => `<option value="${item.id}">${esc(item.longTerm || 'Chưa nhập mục tiêu')}</option>`).join('');
     if (goal && isEdit) parentSelect.value = goal.id;
+    if (mode === 'short' && goalId) parentSelect.value = String(goalId);
     $('#goal-modal').classList.toggle('small-edit-modal', isEdit && !isDomainEdit && !isSettingsDomainEdit);
     $('#goal-modal').classList.toggle('domain-edit-modal', isDomainEdit || isSettingsDomainEdit || mode === 'domain');
     $('#goal-modal').removeAttribute('hidden');
@@ -519,10 +537,13 @@
     const child = selectedChild();
     const childKey = String(child?.id || state.selectedChildId);
     const hiddenDomains = hiddenPlanNewDomainsForChild(childKey);
-    if (window.confirm('Ẩn lĩnh vực này khỏi Kế hoạch giáo dục new? Dữ liệu vẫn được giữ trong Cài đặt và Tổng quan.')) {
-      if (!hiddenDomains.includes(domainName)) planNewHiddenDomainsByChild[childKey] = [...hiddenDomains, domainName];
+    if (window.confirm('Xóa lĩnh vực này và toàn bộ mục tiêu của trẻ? Dữ liệu sẽ bị xóa hoàn toàn.')) {
+      state.goals = state.goals.filter((goal) => !(goal.childId === child?.id && goal.domain === domainName));
+      planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== domainName);
       persistPlanNewHiddenDomains();
+      state.planNewOpenDomainsByChild = { ...(state.planNewOpenDomainsByChild || {}), [childKey]: Object.fromEntries(Object.entries(state.planNewOpenDomainsByChild?.[childKey] || {}).filter(([domain]) => domain !== domainName)) };
       if (planNewFilter === domainName) planNewFilter = '';
+      persist();
       renderPlanNew();
     }
     event.stopImmediatePropagation();
@@ -547,7 +568,7 @@
       persist();
       if (childChoice.dataset.childChoice === 'overview') renderOverview();
       if (childChoice.dataset.childChoice === 'plan') renderPlan();
-      if (childChoice.dataset.childChoice === 'plan-new') renderPlanNew();
+      if (childChoice.dataset.childChoice === 'plan-new') { planNewOpenDomains = state.planNewOpenDomainsByChild?.[String(state.selectedChildId)] || {}; state.planNewOpenDomains = planNewOpenDomains; renderPlanNew(); }
       return;
     }
     const iconChoice = event.target.closest('[data-domain-icon]');
@@ -570,6 +591,16 @@
       if (action.dataset.action === 'close-note') closeNoteModal();
       if (action.dataset.action === 'objective') { draftShortGoals = [...defaultShortGoals]; draftLongTerm = defaultLongTerm; navigate('objective'); }
       if (action.dataset.action === 'print') window.print();
+      if (action.dataset.action === 'export-share-pdf') exportSharePdf();
+      if (action.dataset.action === 'export-share-word') exportShareWord();
+      if (action.dataset.action === 'save-plan-new') {
+        state.planNewOpenDomains = planNewOpenDomains;
+        state.planNewOpenDomainsByChild = { ...(state.planNewOpenDomainsByChild || {}), [String(state.selectedChildId)]: planNewOpenDomains };
+        persist();
+        action.innerHTML = `${icon('save')}Đã lưu`;
+        window.setTimeout(() => { if (action.isConnected) action.innerHTML = `${icon('save')}Lưu`; }, 1200);
+        return;
+      }
       if (action.dataset.action === 'edit-domain-setting') {
         const domainName = action.dataset.domainSettingName;
         const goal = state.goals.find((item) => item.childId === state.selectedChildId && item.domain === domainName) || state.goals.find((item) => item.domain === domainName);
@@ -583,6 +614,9 @@
           domains = state.domains;
           delete state.domainIcons[domainName];
           state.goals = state.goals.filter((goal) => goal.domain !== domainName);
+          planNewHiddenDomainsByChild = Object.fromEntries(Object.entries(planNewHiddenDomainsByChild).map(([childId, values]) => [childId, values.filter((domain) => domain !== domainName)]));
+          persistPlanNewHiddenDomains();
+          state.planNewOpenDomainsByChild = Object.fromEntries(Object.entries(state.planNewOpenDomainsByChild || {}).map(([childId, values]) => { const next = { ...values }; delete next[domainName]; return [childId, next]; }));
           persist();
           renderSettings();
           applyTheme();
@@ -612,9 +646,9 @@
     const goal = state.goals.find((item) => item.id === id);
     if (action.dataset.action === 'close-goal') closeGoalModal();
     if (action.dataset.action === 'add-domain') openGoalModal('domain');
-    if (action.dataset.action === 'toggle-new-domain') { const domain = action.dataset.newDomain; planNewOpenDomains[domain] = !(planNewOpenDomains[domain] ?? false); renderPlanNew(); return; }
-    if (action.dataset.action === 'collapse-new-domains') { planNewOpenDomains = Object.fromEntries((state.domains || domains).map((domain) => [domain, false])); renderPlanNew(); return; }
-    if (action.dataset.action === 'expand-new-domains') { planNewOpenDomains = Object.fromEntries((state.domains || domains).map((domain) => [domain, true])); renderPlanNew(); return; }
+    if (action.dataset.action === 'toggle-new-domain') { const domain = action.dataset.newDomain; planNewOpenDomains[domain] = !(planNewOpenDomains[domain] ?? false); state.planNewOpenDomains = planNewOpenDomains; state.planNewOpenDomainsByChild = { ...(state.planNewOpenDomainsByChild || {}), [String(state.selectedChildId)]: planNewOpenDomains }; renderPlanNew(); return; }
+    if (action.dataset.action === 'collapse-new-domains') { planNewOpenDomains = Object.fromEntries((state.domains || domains).map((domain) => [domain, false])); state.planNewOpenDomains = planNewOpenDomains; state.planNewOpenDomainsByChild = { ...(state.planNewOpenDomainsByChild || {}), [String(state.selectedChildId)]: planNewOpenDomains }; renderPlanNew(); return; }
+    if (action.dataset.action === 'expand-new-domains') { planNewOpenDomains = Object.fromEntries((state.domains || domains).map((domain) => [domain, true])); state.planNewOpenDomains = planNewOpenDomains; state.planNewOpenDomainsByChild = { ...(state.planNewOpenDomainsByChild || {}), [String(state.selectedChildId)]: planNewOpenDomains }; renderPlanNew(); return; }
     if (action.dataset.action === 'toggle-domain' && goal) { state.collapsedGoalIds = state.collapsedGoalIds.includes(goal.id) ? state.collapsedGoalIds.filter((item) => item !== goal.id) : [...state.collapsedGoalIds, goal.id]; persist(); renderPlan(); }
     if (action.dataset.action === 'edit-domain' && goal) openGoalModal('edit-domain', goal.id);
     if (action.dataset.action === 'add-long') { planNewPendingDomain = action.dataset.planNewDomain || ''; openGoalModal('long'); if (planNewPendingDomain && $('#goal-dialog-domain')) $('#goal-dialog-domain').value = planNewPendingDomain; }
@@ -701,10 +735,10 @@
     const id = Number($('#goal-dialog-id').value);
     const shortIndex = Number($('#goal-dialog-short-index').value);
     if ((mode === 'domain' && !selectedDomain) || ((mode === 'edit-domain' || mode === 'edit-domain-setting') && !domainName)) { window.alert('Vui lòng chọn đầy đủ thông tin lĩnh vực.'); return; }
-    if (mode !== 'edit-period' && mode !== 'domain' && mode !== 'edit-domain' && !text) { window.alert('Vui lòng nhập mục tiêu dài hạn.'); return; }
+    if ((mode === 'domain' || mode === 'long' || mode === 'short' || mode === 'edit-long' || mode === 'edit-short') && !text) { window.alert('Vui lòng nhập mục tiêu dài hạn.'); return; }
     if (mode === 'edit-period' && !periodLabel) { window.alert('Vui lòng nhập tên thời gian.'); return; }
     if (mode === 'domain') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: '', shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain, longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
       state.domainIcons[selectedDomain] = state.domainIcons?.[selectedDomain] || defaultDomainIcons[selectedDomain] || domainIconOptions[0].value;
       const hiddenDomains = hiddenPlanNewDomainsForChild(state.selectedChildId);
       if (hiddenDomains.includes(selectedDomain)) {
@@ -738,11 +772,18 @@
       if (previousDomain !== domainName) delete state.domainIcons[previousDomain];
       state.domainIcons[domainName] = state.domainIcons?.[domainName] || previousIcon;
     } else if (mode === 'long') {
-      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: selectedDomain || domains[0], longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
+      const goalDomain = selectedDomain || domains[0];
+      state.goals.push({ id: Math.max(0, ...state.goals.map((item) => item.id)) + 1, childId: state.selectedChildId, domain: goalDomain, longTerm: text, shortTerm: [], from: '01/07/2026', to: '30/08/2026', statuses: periodsForChild(state.selectedChildId).map(() => 'Chưa đạt') });
+      const hiddenDomains = hiddenPlanNewDomainsForChild(state.selectedChildId);
+      if (hiddenDomains.includes(goalDomain)) {
+        const childKey = String(state.selectedChildId);
+        planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== goalDomain);
+        persistPlanNewHiddenDomains();
+      }
     } else if (mode === 'edit-long') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.longTerm = text;
     } else if (mode === 'short') {
-      const goal = state.goals.find((item) => item.id === Number($('#goal-dialog-parent').value)); if (goal) goal.shortTerm = [...(goal.shortTerm || []), text];
+      const goal = state.goals.find((item) => item.id === Number($('#goal-dialog-parent').value)); if (goal) { goal.shortTerm = [...(goal.shortTerm || []), text]; const hiddenDomains = hiddenPlanNewDomainsForChild(goal.childId); if (hiddenDomains.includes(goal.domain)) { const childKey = String(goal.childId); planNewHiddenDomainsByChild[childKey] = hiddenDomains.filter((domain) => domain !== goal.domain); persistPlanNewHiddenDomains(); } }
     } else if (mode === 'edit-short') {
       const goal = state.goals.find((item) => item.id === id); if (goal) goal.shortTerm[shortIndex] = text;
     } else if (mode === 'period' && !periodsForChild(state.selectedChildId).includes(text)) {
@@ -794,7 +835,7 @@
     const action = event.target.closest('[data-action="delete-domain-setting"]');
     if (action && state.view === 'plan-new') window.setTimeout(() => renderPlanNew(), 0);
   });
-  function render() { document.body.classList.toggle('share-mode', shareMode); if (shareMode) { renderSharePage(); return; } renderOverview(); renderPlan(); renderPlanNew(); renderChildren(); renderObjective(); renderSettings(); navigate(state.view); }
+  function render() { document.body.classList.toggle('share-mode', shareMode); if (shareMode) { renderSharePage(); return; } renderOverview(); renderPlanNew(); renderChildren(); renderObjective(); renderSettings(); navigate(state.view); }
   applyTheme();
   render();
   if (window.GiaoAnCloud) {
@@ -813,6 +854,7 @@
       Object.keys(data).forEach((key) => {
         if (key !== 'children' && key !== 'goals') state[key] = data[key];
       });
+      planNewOpenDomains = state.planNewOpenDomainsByChild?.[String(state.selectedChildId)] || (state.planNewOpenDomains && typeof state.planNewOpenDomains === 'object' ? state.planNewOpenDomains : {});
       if (Array.isArray(data.children)) state.children = data.children;
       if (Array.isArray(data.goals)) state.goals = data.goals;
       state.evaluationPeriods = normalizePeriods(state.evaluationPeriods, weekLabels);
