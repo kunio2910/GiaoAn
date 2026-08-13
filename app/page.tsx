@@ -775,6 +775,21 @@ export default function Home() {
   const [collapsedGoalIds, setCollapsedGoalIds] = useState<number[]>([]);
   const [planNewOpenDomainsByChild, setPlanNewOpenDomainsByChild] = useState<Record<string, Record<string, boolean>>>({});
   const [selectedChildId, setSelectedChildId] = useState(0);
+  useEffect(() => {
+    const openOverviewFromCard = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const card = target?.closest(".child-card");
+      if (!card || target?.closest("button")) return;
+      const planButton = card.querySelector<HTMLElement>("[data-plan-child]");
+      const id = Number(planButton?.dataset.planChild);
+      if (!Number.isFinite(id)) return;
+      event.stopPropagation();
+      setSelectedChildId(id);
+      setView("overview");
+    };
+    document.addEventListener("click", openOverviewFromCard, true);
+    return () => document.removeEventListener("click", openOverviewFromCard, true);
+  }, []);
   const planNewHiddenDomains = planNewHiddenDomainsByChild[String(selectedChildId)] ?? [];
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
@@ -1005,6 +1020,21 @@ function HomeLegacy() {
   const [children, setChildren] = useState<Child[]>(initialChildren);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [selectedChildId, setSelectedChildId] = useState(initialChildren[0]?.id ?? 0);
+  useEffect(() => {
+    const openOverviewFromCard = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const card = target?.closest(".child-card");
+      if (!card || target?.closest("button")) return;
+      const planButton = card.querySelector<HTMLElement>("[data-plan-child]");
+      const id = Number(planButton?.dataset.planChild);
+      if (!Number.isFinite(id)) return;
+      event.stopPropagation();
+      setSelectedChildId(id);
+      setView("overview");
+    };
+    document.addEventListener("click", openOverviewFromCard, true);
+    return () => document.removeEventListener("click", openOverviewFromCard, true);
+  }, []);
   const [editingChild, setEditingChild] = useState<Child | undefined>();
   const [showChildForm, setShowChildForm] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);
