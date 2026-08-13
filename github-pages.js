@@ -687,7 +687,7 @@
     const childCard = event.target.closest('.child-card');
     if (childCard && !event.target.closest('button')) {
       const planButton = childCard.querySelector('[data-plan-child]');
-      if (planButton) { state.selectedChildId = Number(planButton.dataset.planChild); navigate('plan'); return; }
+      if (planButton) { state.selectedChildId = Number(planButton.dataset.planChild); navigate('overview'); return; }
     }
     const shareChild = event.target.closest('[data-share-child]'); if (shareChild) { copyChildShareLink(Number(shareChild.dataset.shareChild)); return; }
     const planChild = event.target.closest('[data-plan-child]'); if (planChild) { state.selectedChildId = Number(planChild.dataset.planChild); navigate('plan'); }
