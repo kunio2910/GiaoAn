@@ -573,7 +573,7 @@
     parentSelect.innerHTML = currentGoals.map((item) => `<option value="${item.id}">${esc(item.longTerm || 'Chưa nhập mục tiêu')}</option>`).join('');
     if (goal && isEdit) parentSelect.value = goal.id;
     if (mode === 'short' && goalId) parentSelect.value = String(goalId);
-    $('#goal-modal').classList.toggle('small-edit-modal', isEdit && !isDomainEdit && !isSettingsDomainEdit);
+    $('#goal-modal').classList.toggle('small-edit-modal', (isEdit && !isDomainEdit && !isSettingsDomainEdit) || mode === 'short');
     $('#goal-modal').classList.toggle('domain-edit-modal', isDomainEdit || isSettingsDomainEdit || mode === 'domain');
     $('#goal-modal').removeAttribute('hidden');
     (isPeriodEdit ? $('#goal-dialog-period-label') : mode === 'domain' ? $('#goal-dialog-domain') : isDomainEdit || isSettingsDomainEdit ? $('#goal-dialog-domain-name') : $('#goal-dialog-text')).focus();
@@ -684,6 +684,11 @@
     if (noteButton) { const select = noteButton.closest('tr')?.querySelector('[data-goal-id]'); if (select) openNoteModal(Number(select.dataset.goalId)); return; }
     const previewToggle = event.target.closest('[data-preview-week]'); if (previewToggle) { const panel = previewToggle.closest('.preview-week'); document.querySelectorAll('.preview-week').forEach((item) => item.classList.remove('open')); panel.classList.add('open'); const list = panel.querySelector('ol'); list.innerHTML = draftShortGoals.filter((value) => value.trim()).map((value) => `<li>${esc(value)}</li>`).join(''); }
     const weekTab = event.target.closest('[data-week-tab]'); if (weekTab) { document.querySelectorAll('.week-tab').forEach((item) => item.classList.toggle('active', item === weekTab)); }
+    const childCard = event.target.closest('.child-card');
+    if (childCard && !event.target.closest('button')) {
+      const planButton = childCard.querySelector('[data-plan-child]');
+      if (planButton) { state.selectedChildId = Number(planButton.dataset.planChild); navigate('plan'); return; }
+    }
     const shareChild = event.target.closest('[data-share-child]'); if (shareChild) { copyChildShareLink(Number(shareChild.dataset.shareChild)); return; }
     const planChild = event.target.closest('[data-plan-child]'); if (planChild) { state.selectedChildId = Number(planChild.dataset.planChild); navigate('plan'); }
     const editChild = event.target.closest('[data-edit-child]'); if (editChild) openChildModal(Number(editChild.dataset.editChild));
@@ -778,6 +783,7 @@
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();
     const mode = $('#goal-dialog-mode').value;
+    const restoreScrollY = mode === 'short' ? window.scrollY : null;
     const text = (mode === 'edit-domain' ? $('#goal-dialog-edit-long').value : mode === 'edit-domain-setting' ? $('#goal-dialog-domain-name').value : $('#goal-dialog-text').value).trim();
     const selectedDomain = $('#goal-dialog-domain').value.trim();
     const domainName = $('#goal-dialog-domain-name').value.trim();
@@ -855,6 +861,7 @@
       }
     }
     persist(); closeGoalModal(); render();
+    if (restoreScrollY !== null) window.setTimeout(() => window.scrollTo({ top: restoreScrollY, behavior: 'auto' }), 0);
   });
   document.addEventListener('submit', (event) => {
     if (event.target.id !== 'objective-form') return;
