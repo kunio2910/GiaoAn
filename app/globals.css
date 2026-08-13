@@ -468,3 +468,4 @@ html.dark-mode .plan-new-goal{border-color:#4774ae;border-left-color:#73a9ff;bac
 .plan-new-period-label button{width:30px;height:30px}
 .plan-new-period-label button svg{width:18px;height:18px}
 .plan-new-goal-footer{font-size:13px}
+.status-select.pending select{color:#7e90ac}
