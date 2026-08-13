@@ -573,7 +573,7 @@
     parentSelect.innerHTML = currentGoals.map((item) => `<option value="${item.id}">${esc(item.longTerm || 'Chưa nhập mục tiêu')}</option>`).join('');
     if (goal && isEdit) parentSelect.value = goal.id;
     if (mode === 'short' && goalId) parentSelect.value = String(goalId);
-    $('#goal-modal').classList.toggle('small-edit-modal', (isEdit && !isDomainEdit && !isSettingsDomainEdit) || mode === 'short');
+    $('#goal-modal').classList.toggle('small-edit-modal', (isEdit && !isDomainEdit && !isSettingsDomainEdit) || mode === 'short' || mode === 'long' || mode === 'period');
     $('#goal-modal').classList.toggle('domain-edit-modal', isDomainEdit || isSettingsDomainEdit || mode === 'domain');
     $('#goal-modal').removeAttribute('hidden');
     (isPeriodEdit ? $('#goal-dialog-period-label') : mode === 'domain' ? $('#goal-dialog-domain') : isDomainEdit || isSettingsDomainEdit ? $('#goal-dialog-domain-name') : $('#goal-dialog-text')).focus();
@@ -783,7 +783,7 @@
     if (event.target.id !== 'goal-form') return;
     event.preventDefault();
     const mode = $('#goal-dialog-mode').value;
-    const restoreScrollY = mode === 'short' ? window.scrollY : null;
+    const restoreScrollY = mode === 'short' || mode === 'long' || mode === 'period' ? window.scrollY : null;
     const text = (mode === 'edit-domain' ? $('#goal-dialog-edit-long').value : mode === 'edit-domain-setting' ? $('#goal-dialog-domain-name').value : $('#goal-dialog-text').value).trim();
     const selectedDomain = $('#goal-dialog-domain').value.trim();
     const domainName = $('#goal-dialog-domain-name').value.trim();
