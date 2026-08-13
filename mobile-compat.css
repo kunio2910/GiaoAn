@@ -242,6 +242,7 @@
   }
 
   .modal-backdrop {
+    z-index: 100;
     align-items: end;
     padding: 0;
     height: var(--giaoan-viewport-height, 100dvh);
