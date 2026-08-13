@@ -36,6 +36,22 @@ function birthdayDisplayValue(value: string) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
 }
 
+function calculateAge(value: string, today = new Date()) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value) ?? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return "Chưa xác định";
+  const year = match[1].length === 4 ? Number(match[1]) : Number(match[3]);
+  const month = Number(match[2]) - 1;
+  const day = match[1].length === 4 ? Number(match[3]) : Number(match[1]);
+  const birthDate = new Date(year, month, day);
+  if (Number.isNaN(birthDate.getTime()) || birthDate > today) return "Chưa xác định";
+  let years = today.getFullYear() - year;
+  let months = today.getMonth() - month;
+  if (today.getDate() < day) months -= 1;
+  if (months < 0) { years -= 1; months += 12; }
+  if (years < 0) return "Chưa xác định";
+  return years > 0 ? `${years} tuổi ${months} tháng` : `${months} tháng`;
+}
+
 type Child = {
   id: number;
   name: string;
@@ -218,6 +234,41 @@ function childShareUrl(child: Child) {
   return url.toString();
 }
 
+function escapeExportHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
+}
+
+function shareExportHtml(child: Child, goals: Goal[], evaluationPeriods: string[], domainIcons: Record<string, DomainIcon>) {
+  const periods = evaluationPeriods.length ? evaluationPeriods : DEFAULT_EVALUATION_PERIODS;
+  const iconGlyphs: Record<DomainIcon, string> = { target: "◎", group: "♣", eye: "◉", children: "♧", calendar: "▣", note: "▤", overview: "▦", plan: "▥", heart: "♥", star: "★", puzzle: "✦", music: "♫", brain: "◌", hand: "✋" };
+  const statusClass = (status: Status) => status === "Đạt" ? "status-achieved" : status === "Manh nha" ? "status-emerging" : "status-not-achieved";
+  const rows = goals.length ? goals.map((goal) => `<tr><td><span class="export-domain-icon">${iconGlyphs[resolveDomainIcon(goal.domain, domainIcons)]}</span><strong>${escapeExportHtml(goal.domain)}</strong></td><td>${escapeExportHtml(goal.longTerm || "Chưa nhập mục tiêu")}</td><td><ul>${(goal.shortTerm.length ? goal.shortTerm : ["Chưa có mục tiêu ngắn hạn"]).map((item) => `<li>${escapeExportHtml(item)}</li>`).join("")}</ul></td>${periods.map((_, index) => { const status = goal.statuses[index] ?? "Chưa đạt"; return `<td><span class="export-status ${statusClass(status)}"><i></i>${escapeExportHtml(status)}</span></td>`; }).join("")}<td>${escapeExportHtml(goal.note || "Chưa có ghi chú")}</td></tr>`).join("") : `<tr><td colspan="${periods.length + 4}" class="export-empty">Chưa có mục tiêu phát triển</td></tr>`;
+  const achievedCount = goals.reduce((total, goal) => total + goal.statuses.filter((status) => status === "Đạt").length, 0);
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Kế hoạch giáo dục - ${escapeExportHtml(child.name)}</title><style>
+    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;background:#f6f9ff;color:#10265f;font-family:Arial,"Segoe UI",sans-serif;font-size:12px}.page{max-width:1180px;margin:0 auto}.brand{display:flex;align-items:center;gap:10px;color:#0d4fb8;font-weight:800;font-size:16px;letter-spacing:.04em;padding:8px 0 18px;border-bottom:1px solid #d8e3f4}.brand-mark{width:30px;height:30px;border-radius:10px;background:#e8f1ff;color:#1261d2;display:grid;place-items:center;font-size:20px}.eyebrow{display:block;color:#6581b2;font-size:10px;font-weight:800;letter-spacing:.14em}.hero{padding:20px 0 14px}.hero h1{margin:5px 0;color:#123f91;font-size:28px}.hero p{margin:0;color:#6780aa}.summary{display:grid;grid-template-columns:1.35fr 1fr .9fr;gap:18px;align-items:center;background:#fff;border:1px solid #d7e4f4;border-left:5px solid #1769d4;border-radius:16px;padding:18px 20px;box-shadow:0 8px 22px rgba(42,83,148,.12)}.summary-main strong{display:block;font-size:18px;color:#123f91;margin-bottom:10px}.summary-main span,.summary-meta span{display:block;margin-top:7px}.summary-meta{line-height:1.5}.evaluation{border:1px solid #bfe2d2;background:#f2fbf6;border-radius:12px;padding:14px;color:#126047}.evaluation strong,.evaluation b{display:block;margin-bottom:7px}.metrics{display:flex;gap:26px;padding:15px 0;font-weight:700}.section{background:#fff;border:1px solid #d7e4f4;border-radius:16px;overflow:hidden;box-shadow:0 6px 18px rgba(42,83,148,.08)}.section-head{padding:16px 20px;border-bottom:1px solid #d7e4f4}.section-head h2{margin:4px 0;color:#123f91;font-size:19px}.section-head p{margin:0;color:#7186ab}.table-wrap{overflow:hidden}table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#eff5ff;color:#163a82;font-size:11px;text-align:center;padding:12px 8px;border:1px solid #d7e4f4}td{padding:12px 9px;border:1px solid #d7e4f4;vertical-align:top;color:#1b3775;line-height:1.45}td:first-child{width:15%;font-weight:700}td:nth-child(2){width:18%}td:nth-child(3){width:24%}td ul{margin:0;padding-left:17px}.export-domain-icon{display:inline-grid;place-items:center;width:28px;height:28px;margin-right:7px;border-radius:50%;background:#ede5ff;color:#824be5;font-size:18px;vertical-align:middle}.export-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.export-status i{width:11px;height:11px;border-radius:50%;display:inline-block}.status-achieved i{background:#24b15b}.status-emerging i{background:#f5b819}.status-not-achieved i{background:#aeb2b8}.export-empty{text-align:center;color:#7a8baa}.footer{padding:14px 0;color:#6c82a9;text-align:center}@media print{body{background:#fff}.page{max-width:none}.section,.summary{box-shadow:none}}
+  </style></head><body><main class="page"><div class="brand"><span class="brand-mark">◎</span><span>KẾ HOẠCH GIÁO DỤC<small style="display:block;font-size:9px;font-weight:500;letter-spacing:0">Trang chia sẻ hồ sơ trẻ</small></span></div><section class="hero"><span class="eyebrow">HỒ SƠ TRẺ</span><h1>${escapeExportHtml(child.name)}</h1><p>Thông tin kế hoạch giáo dục được chia sẻ riêng cho hồ sơ này.</p></section><section class="summary"><div class="summary-main"><strong>${escapeExportHtml(child.name)}</strong><span>Ngày sinh: ${escapeExportHtml(child.birthday)}</span><span>Tuổi thực: ${escapeExportHtml(calculateAge(child.birthday))}</span></div><div class="summary-meta"><span>Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span>Ngày lập kế hoạch: 30/06/2026</span></div><div class="evaluation"><strong>Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section><div class="metrics"><span>${goals.length} mục tiêu đang theo dõi</span><span>${achievedCount} kết quả đạt</span></div><section class="section"><div class="section-head"><span class="eyebrow">KẾ HOẠCH GIÁO DỤC</span><h2>Mục tiêu phát triển</h2><p>Kết quả được hiển thị theo từng giai đoạn đánh giá.</p></div><div class="table-wrap"><table><thead><tr><th>LĨNH VỰC</th><th>MỤC TIÊU DÀI HẠN</th><th>MỤC TIÊU NGẮN HẠN</th>${periods.map((period) => `<th>${escapeExportHtml(period)}</th>`).join("")}<th>GHI CHÚ</th></tr></thead><tbody>${rows}</tbody></table></div></section><div class="footer">Đường dẫn này chỉ hiển thị thông tin của <strong>${escapeExportHtml(child.name)}</strong>.</div></main></body></html>`;
+}
+
+function openSharePrintWindow(child: Child, goals: Goal[], evaluationPeriods: string[], domainIcons: Record<string, DomainIcon>) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) { window.alert("Trình duyệt đang chặn cửa sổ xuất file. Hãy cho phép pop-up rồi thử lại."); return; }
+  printWindow.document.open();
+  printWindow.document.write(shareExportHtml(child, goals, evaluationPeriods, domainIcons));
+  printWindow.document.close();
+  printWindow.addEventListener("load", () => { printWindow.focus(); printWindow.print(); });
+}
+
+function downloadShareWord(child: Child, goals: Goal[], evaluationPeriods: string[], domainIcons: Record<string, DomainIcon>) {
+  const blob = new Blob([`\ufeff${shareExportHtml(child, goals, evaluationPeriods, domainIcons)}`], { type: "application/msword" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Ke-hoach-giao-duc-${childNameSlug(child.name) || "tre"}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
 function copyChildShareLink(child: Child) {
   const url = childShareUrl(child);
   const fallback = () => window.prompt(`Đường dẫn chia sẻ của ${child.name}`, url);
@@ -235,7 +286,7 @@ function sharedChildSlugFromUrl() {
 }
 
 function ChildSummary({ child }: { child: Child }) {
-  return <section className="child-summary"><ChildAvatar name={child.name} /><div className="summary-name"><strong>{child.name}</strong><span><Icon name="calendar" size={16} /> Ngày sinh: {child.birthday}</span><span><Icon name="user" size={16} /> Tuổi thực: 1 tuổi 11 tháng</span></div><div className="summary-meta"><span><Icon name="user" size={16} /> Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span><Icon name="calendar" size={16} /> Ngày lập kế hoạch: 30/06/2026</span></div><div className="evaluation-summary"><strong><Icon name="calendar" size={16} /> Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section>;
+  return <section className="child-summary"><ChildAvatar name={child.name} /><div className="summary-name"><strong>{child.name}</strong><span><Icon name="calendar" size={16} /> Ngày sinh: {child.birthday}</span><span><Icon name="user" size={16} /> Tuổi thực: {calculateAge(child.birthday)}</span></div><div className="summary-meta"><span><Icon name="user" size={16} /> Người lập kế hoạch: Nguyễn Thị Vành Khuyên</span><span><Icon name="calendar" size={16} /> Ngày lập kế hoạch: 30/06/2026</span></div><div className="evaluation-summary"><strong><Icon name="calendar" size={16} /> Thông tin lượng giá</strong><span>Ngày lượng giá:</span><b>30/07/2026 và 30/08/2026</b></div></section>;
 }
 
 function StatusSelect({ value, onChange }: { value: Status; onChange: (value: Status) => void }) {
@@ -649,7 +700,11 @@ function ShareView({ child, goals, evaluationPeriods, domainIcons }: { child: Ch
 
 /* eslint-enable jsx-a11y/no-autofocus */
 
-function SettingsView({ darkMode, onToggleTheme, domains = DOMAIN_OPTIONS, domainIcons = DEFAULT_DOMAIN_ICONS, onAddDomain = () => undefined, onEditDomain = () => undefined, onDeleteDomain = () => undefined }: { darkMode: boolean; onToggleTheme: () => void; domains?: string[]; domainIcons?: Record<string, DomainIcon>; onAddDomain?: (domain: string, icon: DomainIcon) => void; onEditDomain?: (domain: string) => void; onDeleteDomain?: (domain: string) => void }) {
+let settingsExportPdfHandler: () => void = () => undefined;
+let settingsExportWordHandler: () => void = () => undefined;
+let settingsSelectedChild: Child | undefined;
+
+function SettingsView({ darkMode, onToggleTheme, domains = DOMAIN_OPTIONS, domainIcons = DEFAULT_DOMAIN_ICONS, selectedChild = settingsSelectedChild, onExportPdf = () => settingsExportPdfHandler(), onExportWord = () => settingsExportWordHandler(), onAddDomain = () => undefined, onEditDomain = () => undefined, onDeleteDomain = () => undefined }: { darkMode: boolean; onToggleTheme: () => void; domains?: string[]; domainIcons?: Record<string, DomainIcon>; selectedChild?: Child; onExportPdf?: () => void; onExportWord?: () => void; onAddDomain?: (domain: string, icon: DomainIcon) => void; onEditDomain?: (domain: string) => void; onDeleteDomain?: (domain: string) => void }) {
   const [newDomain, setNewDomain] = useState("");
   const [newDomainIcon, setNewDomainIcon] = useState<DomainIcon>(DOMAIN_ICON_OPTIONS[0].value);
   const submitDomain = (event: React.FormEvent<HTMLFormElement>) => {
@@ -660,12 +715,13 @@ function SettingsView({ darkMode, onToggleTheme, domains = DOMAIN_OPTIONS, domai
     setNewDomain("");
     setNewDomainIcon(DOMAIN_ICON_OPTIONS[0].value);
   };
-  return <><Header title="Cài đặt" subtitle="Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục" /><div className="settings-card"><div className="settings-heading"><div className="settings-icon"><Icon name="settings" size={24} /></div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><div className="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input aria-label="Giao diện tối" type="checkbox" checked={darkMode} onChange={onToggleTheme} /></div></div><div className="settings-card domain-settings-section"><div className="settings-heading"><div className="settings-icon"><Icon name="target" size={24} /></div><div><h2>Quản lý lĩnh vực</h2><p>Đặt tên và chọn icon riêng cho từng lĩnh vực phát triển.</p></div></div><form className="domain-settings-form" onSubmit={submitDomain}><InputField label="Tên lĩnh vực mới" value={newDomain} onChange={setNewDomain} placeholder="Ví dụ: Kỹ năng tự phục vụ" required /><label className="field domain-settings-icon-field"><span>Icon lĩnh vực</span><DomainIconPicker value={newDomainIcon} onChange={setNewDomainIcon} /></label><button type="submit" className="button primary"><Icon name="plus" size={17} />Thêm lĩnh vực</button></form><div className="domain-settings-list" aria-live="polite">{domains.map((domain) => <div className="domain-settings-item" key={domain}><DomainIconBadge value={domainIcons[domain]} size={19} /><span>{domain}</span><button type="button" className="domain-settings-action edit" onClick={() => onEditDomain(domain)} aria-label={`Sửa ${domain}`}><Icon name="edit" size={17} /></button><button type="button" className="domain-settings-action delete" onClick={() => onDeleteDomain(domain)} aria-label={`Xóa ${domain}`}><Icon name="trash" size={17} /></button></div>)}</div></div></>;
+  return <><Header title="Cài đặt" subtitle="Tùy chỉnh cách bạn sử dụng kế hoạch giáo dục" /><div className="settings-card"><div className="settings-heading"><div className="settings-icon"><Icon name="settings" size={24} /></div><div><h2>Tùy chọn ứng dụng</h2><p>Các thay đổi được lưu trên thiết bị này.</p></div></div><div className="setting-row"><span><strong>Giao diện tối</strong><small>Đổi sang nền tối để sử dụng dễ chịu hơn vào buổi tối.</small></span><input aria-label="Giao diện tối" type="checkbox" checked={darkMode} onChange={onToggleTheme} /></div></div><div className="settings-card export-settings-card"><div className="settings-heading"><div className="settings-icon export-settings-icon"><Icon name="file" size={24} /></div><div><h2>Xuất hồ sơ chia sẻ</h2><p>Xuất nội dung giống màn hình share của {selectedChild?.name ?? "trẻ đang chọn"}.</p></div></div><div className="export-settings-actions"><button type="button" className="button primary" disabled={!selectedChild} onClick={onExportPdf}><Icon name="file" size={17} />Xuất PDF</button><button type="button" className="button" disabled={!selectedChild} onClick={onExportWord}><Icon name="file" size={17} />Xuất Word</button></div>{!selectedChild && <small className="settings-help-text">Hãy thêm hoặc chọn một hồ sơ trẻ trước khi xuất file.</small>}</div><div className="settings-card domain-settings-section"><div className="settings-heading"><div className="settings-icon"><Icon name="target" size={24} /></div><div><h2>Quản lý lĩnh vực</h2><p>Đặt tên và chọn icon riêng cho từng lĩnh vực phát triển.</p></div></div><form className="domain-settings-form" onSubmit={submitDomain}><InputField label="Tên lĩnh vực mới" value={newDomain} onChange={setNewDomain} placeholder="Ví dụ: Kỹ năng tự phục vụ" required /><label className="field domain-settings-icon-field"><span>Icon lĩnh vực</span><DomainIconPicker value={newDomainIcon} onChange={setNewDomainIcon} /></label><button type="submit" className="button primary"><Icon name="plus" size={17} />Thêm lĩnh vực</button></form><div className="domain-settings-list" aria-live="polite">{domains.map((domain) => <div className="domain-settings-item" key={domain}><DomainIconBadge value={domainIcons[domain]} size={19} /><span>{domain}</span><button type="button" className="domain-settings-action edit" onClick={() => onEditDomain(domain)} aria-label={`Sửa ${domain}`}><Icon name="edit" size={17} /></button><button type="button" className="domain-settings-action delete" onClick={() => onDeleteDomain(domain)} aria-label={`Xóa ${domain}`}><Icon name="trash" size={17} /></button></div>)}</div></div></>;
 }
 
 export default function Home() {
   const [view, setViewRaw] = useState<View>("plan-new");
   const setView = (next: View) => setViewRaw(next === "plan" ? "plan-new" : next);
+  const [, setAgeClock] = useState(() => Date.now());
   const [shareChildSlug] = useState<string | null>(() => sharedChildSlugFromUrl());
   const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && window.localStorage.getItem("giaoan-theme") === "dark");
   const [children, setChildren] = useState<Child[]>([]);
@@ -697,6 +753,10 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== "undefined") window.localStorage.setItem(PLAN_NEW_HIDDEN_DOMAINS_STORAGE_KEY, JSON.stringify(planNewHiddenDomainsByChild));
   }, [planNewHiddenDomainsByChild]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setAgeClock(Date.now()), 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [cloudExtras, setCloudExtras] = useState<Record<string, unknown>>({});
   const cloudSaveTimer = useRef<number | null>(null);
   const periodsForChild = (childId: number) => normalizeEvaluationPeriods(evaluationPeriodsByChild[String(childId)], legacyEvaluationPeriods);
@@ -887,6 +947,19 @@ export default function Home() {
   const currentChildGoals = goals.filter((goal) => goal.childId === selectedChildId);
   const currentView = useMemo(() => view, [view]);
   const noteGoal = goals.find((goal) => goal.id === noteGoalId);
+  const exportCurrentChildPdf = () => {
+    const child = children.find((item) => item.id === selectedChildId) ?? children[0];
+    if (!child) { window.alert("Hãy thêm hoặc chọn một hồ sơ trẻ trước khi xuất file."); return; }
+    openSharePrintWindow(child, goals.filter((goal) => goal.childId === child.id), periodsForChild(child.id), domainIcons);
+  };
+  const exportCurrentChildWord = () => {
+    const child = children.find((item) => item.id === selectedChildId) ?? children[0];
+    if (!child) { window.alert("Hãy thêm hoặc chọn một hồ sơ trẻ trước khi xuất file."); return; }
+    downloadShareWord(child, goals.filter((goal) => goal.childId === child.id), periodsForChild(child.id), domainIcons);
+  };
+  settingsExportPdfHandler = exportCurrentChildPdf;
+  settingsExportWordHandler = exportCurrentChildWord;
+  settingsSelectedChild = children.find((item) => item.id === selectedChildId) ?? children[0];
   if (shareChildSlug !== null) {
     const sharedChild = children.find((child) => childNameSlug(child.name) === shareChildSlug);
     if (!cloudReady && !cloudError) return <div className="share-page"><div className="share-loading">Đang tải hồ sơ được chia sẻ…</div></div>;
