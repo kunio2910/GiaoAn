@@ -467,3 +467,4 @@ html.dark-mode .plan-new-following-count,html.dark-mode .plan-new-board,html.dar
 .plan-new-goal{border-color:#9fc2ee;border-left:4px solid #286bd1;background:linear-gradient(135deg,#f4f8ff 0%,#fff 72%);box-shadow:0 5px 14px rgba(30,88,170,.09)}.plan-new-goal-head h4{color:#103e86}
 html.dark-mode .plan-new-goal{border-color:#4774ae;border-left-color:#73a9ff;background:linear-gradient(135deg,#1d3553,#17253a);box-shadow:0 8px 20px rgba(0,0,0,.18)}
 .plan-new-domain-head[role="button"]{cursor:pointer}
+.export-child-modal{width:min(520px,100%)}.export-child-modal .modal-description{margin:16px 0 0;color:var(--muted);font-size:12px;line-height:1.55}.export-child-modal .field{margin-top:4px}
