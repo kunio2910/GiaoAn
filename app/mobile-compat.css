@@ -289,14 +289,34 @@
   .modal-backdrop {
     align-items: end;
     padding: 0;
+    height: var(--giaoan-viewport-height, 100dvh);
+    min-height: var(--giaoan-viewport-height, 100dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .modal-card {
     width: 100%;
-    max-height: 92svh;
+    max-height: calc(var(--giaoan-viewport-height, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
     overflow: auto;
+    scroll-padding-bottom: 24px;
+    margin: 8px 0;
     padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
     border-radius: 22px 22px 0 0;
+  }
+
+  .modal-backdrop:has(.goal-dialog) {
+    align-items: flex-start;
+    justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 0 max(8px, env(safe-area-inset-bottom));
+  }
+
+  .modal-backdrop:has(.goal-dialog) .goal-dialog {
+    width: 100%;
+    height: auto;
+    max-height: calc(var(--giaoan-viewport-height, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+    margin: 0;
+    border-radius: 16px;
   }
 
   .modal-actions,
