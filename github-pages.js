@@ -77,6 +77,20 @@
   let draftShortGoals = [...defaultShortGoals];
   let draftLongTerm = defaultLongTerm;
   const $ = (selector) => document.querySelector(selector);
+  const syncMobileViewport = () => {
+    if (window.visualViewport) document.documentElement.style.setProperty('--giaoan-viewport-height', `${window.visualViewport.height}px`);
+  };
+  syncMobileViewport();
+  window.visualViewport?.addEventListener('resize', syncMobileViewport);
+  window.visualViewport?.addEventListener('scroll', syncMobileViewport);
+  const mobileModalFocusGuard = new MutationObserver(() => {
+    if (!window.matchMedia('(max-width: 700px)').matches) return;
+    document.querySelectorAll('.modal-backdrop:not([hidden])').forEach((modal) => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && modal.contains(active)) active.blur();
+    });
+  });
+  mobileModalFocusGuard.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const icon = (name, className = '') => `<svg class="${className}"><use href="#icon-${name}"></use></svg>`;
   const domainIconOption = (value) => domainIconOptions.find((option) => option.value === value) || domainIconOptions[0];
@@ -464,11 +478,11 @@
   renderSettings = () => { renderSettingsBase(); const toolbar = $('#screen-settings .topbar'); const hasChildren = state.children.length > 0; if (toolbar) toolbar.insertAdjacentHTML('afterend', `<div class="settings-card export-settings-card"><div class="settings-heading"><div class="settings-icon export-settings-icon">${icon('file')}</div><div><h2>Xuất hồ sơ chia sẻ</h2><p>Chọn hồ sơ trẻ rồi xuất đúng dữ liệu của trẻ đó.</p></div></div><div class="export-settings-actions"><button type="button" class="button primary" data-action="export-share-pdf" ${hasChildren ? '' : 'disabled'}>${icon('file')}Xuất PDF</button><button type="button" class="button" data-action="export-share-word" ${hasChildren ? '' : 'disabled'}>${icon('file')}Xuất Word</button></div>${hasChildren ? '<small class="settings-help-text">File bám sát màn hình share, giữ nguyên icon lĩnh vực và dùng khổ giấy ngang.</small>' : '<small class="settings-help-text">Hãy thêm hồ sơ trẻ trước khi xuất file.</small>'}</div>`); };
   function navigate(view) { if (view === 'plan') view = 'plan-new'; if (shareMode) return; state.view = view; document.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.id === `screen-${view}`)); document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); if (view === 'plan-new') renderPlanNew(); if (view === 'children') renderChildren(); if (view === 'objective') renderObjective(); if (view === 'settings') renderSettings(); applyTheme(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function ensureChildColorField() { if ($('#child-color')) return; const genderField = $('#child-gender')?.closest('.field'); if (!genderField) return; const field = document.createElement('label'); field.className = 'field'; field.innerHTML = '<span>Màu lịch dạy</span><div class="color-select-row"><span id="child-color-swatch" class="schedule-color-swatch blue" aria-hidden="true"></span><div class="select-wrap"><select id="child-color"><option value="blue">Xanh dương</option><option value="purple">Tím</option><option value="teal">Xanh ngọc</option><option value="orange">Cam</option><option value="pink">Hồng</option><option value="green">Xanh lá</option></select>' + icon('chevron') + '</div></div>'; genderField.after(field); }
-  function openChildModal(id) { const child = id ? childById(id) : null; const teachingDays = Array.isArray(child?.teachingDays) ? child.teachingDays : []; ensureChildColorField(); const color = child?.color || scheduleColorOptions[0].value; $('#child-modal-title').textContent = child ? 'Chỉnh sửa hồ sơ trẻ' : 'Thêm trẻ mới'; $('#child-id').value = child?.id || ''; $('#child-name').value = child?.name || ''; $('#child-birthday').value = birthdayInputValue(child?.birthday || ''); $('#child-gender').value = child?.gender || 'Nữ'; $('#child-color').value = color; $('#child-color-swatch').className = `schedule-color-swatch ${color}`; $('#child-note').value = child?.note || ''; $('#child-start-time').value = child?.teachingStartTime || ''; $('#child-end-time').value = child?.teachingEndTime || ''; $('#child-schedule-error').setAttribute('hidden', ''); document.querySelectorAll('[data-teaching-day]').forEach((input) => { input.checked = teachingDays.includes(Number(input.value)); }); $('#child-modal').removeAttribute('hidden'); $('#child-name').focus(); }
+  function openChildModal(id) { const child = id ? childById(id) : null; const teachingDays = Array.isArray(child?.teachingDays) ? child.teachingDays : []; ensureChildColorField(); const color = child?.color || scheduleColorOptions[0].value; $('#child-modal-title').textContent = child ? 'Chỉnh sửa hồ sơ trẻ' : 'Thêm trẻ mới'; $('#child-id').value = child?.id || ''; $('#child-name').value = child?.name || ''; $('#child-birthday').value = birthdayInputValue(child?.birthday || ''); $('#child-gender').value = child?.gender || 'Nữ'; $('#child-color').value = color; $('#child-color-swatch').className = `schedule-color-swatch ${color}`; $('#child-note').value = child?.note || ''; $('#child-start-time').value = child?.teachingStartTime || ''; $('#child-end-time').value = child?.teachingEndTime || ''; $('#child-schedule-error').setAttribute('hidden', ''); document.querySelectorAll('[data-teaching-day]').forEach((input) => { input.checked = teachingDays.includes(Number(input.value)); }); $('#child-modal').removeAttribute('hidden'); }
   function closeChildModal() { $('#child-modal').setAttribute('hidden', ''); }
-  function openPlanInfoModal() { const child = selectedChild(); if (!child) return; const info = getPlanInfo(child); $('#plan-info-planner').value = info.planner; $('#plan-info-date').value = birthdayInputValue(info.planDate); $('#plan-info-evaluation-dates').value = info.evaluationDates; $('#plan-info-modal').removeAttribute('hidden'); $('#plan-info-planner').focus(); }
+  function openPlanInfoModal() { const child = selectedChild(); if (!child) return; const info = getPlanInfo(child); $('#plan-info-planner').value = info.planner; $('#plan-info-date').value = birthdayInputValue(info.planDate); $('#plan-info-evaluation-dates').value = info.evaluationDates; $('#plan-info-modal').removeAttribute('hidden'); }
   function closePlanInfoModal() { $('#plan-info-modal').setAttribute('hidden', ''); }
-  function openNoteModal(id) { const goal = state.goals.find((item) => item.id === Number(id)); if (!goal) return; $('#note-goal-id').value = goal.id; $('#note-text').value = goal.note || ''; $('#note-modal').removeAttribute('hidden'); $('#note-text').focus(); }
+  function openNoteModal(id) { const goal = state.goals.find((item) => item.id === Number(id)); if (!goal) return; $('#note-goal-id').value = goal.id; $('#note-text').value = goal.note || ''; $('#note-modal').removeAttribute('hidden'); }
   function closeNoteModal() { $('#note-modal').setAttribute('hidden', ''); }
   function updateObjectivePreview() { const long = $('#objective-long'); const domain = $('#objective-domain'); if (!long || !domain) return; $('#preview-long').textContent = long.value || 'Chưa nhập mục tiêu'; $('#preview-domain').textContent = domain.value.toUpperCase(); const firstList = document.querySelector('.preview-week.open ol'); if (firstList) firstList.innerHTML = draftShortGoals.filter((value) => value.trim()).map((value) => `<li>${esc(value)}</li>`).join(''); const counter = document.querySelector('.objective-textarea small'); if (counter) counter.textContent = `${long.value.length}/500`; }
 
@@ -582,7 +596,6 @@
     $('#goal-modal').classList.toggle('small-edit-modal', (isEdit && !isDomainEdit && !isSettingsDomainEdit) || mode === 'short' || mode === 'long' || mode === 'period');
     $('#goal-modal').classList.toggle('domain-edit-modal', isDomainEdit || isSettingsDomainEdit || mode === 'domain');
     $('#goal-modal').removeAttribute('hidden');
-    (isPeriodEdit ? $('#goal-dialog-period-label') : mode === 'domain' ? $('#goal-dialog-domain') : isDomainEdit || isSettingsDomainEdit ? $('#goal-dialog-domain-name') : $('#goal-dialog-text')).focus();
   }
   function closeGoalModal() { $('#goal-modal').classList.remove('small-edit-modal', 'domain-edit-modal'); $('#goal-modal').setAttribute('hidden', ''); }
 
