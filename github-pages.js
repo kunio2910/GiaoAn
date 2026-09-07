@@ -169,6 +169,7 @@
     const renderTable = () => {
       const ordered = [...new Set(goals.map((goal) => goal.domain))].flatMap((domain) => goals.filter((goal) => goal.domain === domain));
       const counts = ordered.reduce((result, goal) => { result[goal.domain] = (result[goal.domain] || 0) + 1; return result; }, {});
+      const onlyStandaloneGoals = ordered.length > 0 && ordered.every((goal) => goal.goalType === 'goal');
       const rows = ordered.map((goal, index) => {
         const first = index === 0 || ordered[index - 1].domain !== goal.domain;
         const domainCell = first ? `<td class="domain-cell" rowspan="${counts[goal.domain]}"><span class="domain-icon">${icon(domainIconOption(state.domainIcons?.[goal.domain] || defaultDomainIcons[goal.domain]).value)}</span><strong>${esc(goal.domain || 'Chưa phân loại')}</strong></td>` : '';
@@ -176,12 +177,14 @@
         const shortCell = `<td class="short-term-cell"><ul>${goal.shortTerm?.length ? goal.shortTerm.map((item) => `<li>${esc(item || 'Chưa nhập mục tiêu')}</li>`).join('') : '<li class="cell-placeholder">Chưa có mục tiêu ngắn hạn</li>'}</ul></td>`;
         const resultCells = periods.map((_, periodIndex) => `<td class="result-cell">${statusMarkup(goal.statuses?.[periodIndex] ?? '', goal.id, periodIndex, true)}</td>`).join('');
         const note = `<span class="note-icon-display">${icon('note')}</span>${goal.note ? `<span class="note-content" title="${esc(goal.note)}">${esc(goal.note)}</span>` : '<span class="cell-placeholder">Chưa có ghi chú</span>'}`;
-        const goalCells = standalone ? `<td class="standalone-goal-cell"><div>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</div></td><td class="goal-empty-cell" aria-label="Không áp dụng">—</td><td class="goal-empty-cell" aria-label="Không áp dụng">—</td>` : `<td class="goal-empty-cell" aria-label="Không áp dụng">—</td><td class="long-term-cell"><div>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</div></td>${shortCell}`;
+        const goalCells = standalone ? `<td class="standalone-goal-cell"><div>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</div></td>${onlyStandaloneGoals ? '' : '<td class="goal-empty-cell" aria-label="Không áp dụng">—</td><td class="goal-empty-cell" aria-label="Không áp dụng">—</td>'}` : `<td class="goal-empty-cell" aria-label="Không áp dụng">—</td><td class="long-term-cell"><div>${esc(goal.longTerm || 'Chưa nhập mục tiêu')}</div></td>${shortCell}`;
         return `<tr>${domainCell}${goalCells}${resultCells}<td class="row-note">${note}</td></tr>`;
       }).join('');
       const periodHeaders = periods.map((label) => `<th>${esc(label)}</th>`).join('');
-      const body = rows || `<tr><td colspan="${periods.length + 5}"><div class="table-empty-state">${icon('target')}<strong>Chưa có mục tiêu phát triển</strong><span>Nhấn “Thêm” để bắt đầu tạo mục tiêu cho trẻ.</span></div></td></tr>`;
-      return `<div class="table-scroll mixed-goals-table"><table class="goals-table"><colgroup><col class="goal-col-domain"><col class="goal-col-goal"><col class="goal-col-long"><col class="goal-col-short">${periods.map(() => '<col class="goal-col-period">').join('')}<col class="goal-col-note"></colgroup><thead><tr><th>LĨNH VỰC</th><th>MỤC TIÊU</th><th>MỤC TIÊU DÀI HẠN</th><th>MỤC TIÊU NGẮN HẠN</th><th colspan="${periods.length}">KẾT QUẢ</th><th>GHI CHÚ</th></tr><tr class="period-header"><th></th><th></th><th></th><th></th>${periodHeaders}<th></th></tr></thead><tbody>${body}</tbody></table></div>`;
+      const body = rows || `<tr><td colspan="${periods.length + (onlyStandaloneGoals ? 3 : 5)}"><div class="table-empty-state">${icon('target')}<strong>Chưa có mục tiêu phát triển</strong><span>Nhấn “Thêm” để bắt đầu tạo mục tiêu cho trẻ.</span></div></td></tr>`;
+      const detailColumns = onlyStandaloneGoals ? '' : '<col class="goal-col-long"><col class="goal-col-short">';
+      const detailHeaders = onlyStandaloneGoals ? '' : '<th rowspan="2">MỤC TIÊU DÀI HẠN</th><th rowspan="2">MỤC TIÊU NGẮN HẠN</th>';
+      return `<div class="table-scroll mixed-goals-table ${onlyStandaloneGoals ? 'only-standalone-goals' : ''}"><table class="goals-table"><colgroup><col class="goal-col-domain"><col class="goal-col-goal">${detailColumns}${periods.map(() => '<col class="goal-col-period">').join('')}<col class="goal-col-note"></colgroup><thead><tr><th rowspan="2">LĨNH VỰC</th><th rowspan="2">MỤC TIÊU</th>${detailHeaders}<th colspan="${periods.length}">KẾT QUẢ</th><th rowspan="2">GHI CHÚ</th></tr><tr class="period-header">${periodHeaders}</tr></thead><tbody>${body}</tbody></table></div>`;
     };
     return `${renderTable()}<div class="table-footer"><span>Hiển thị ${goals.length} mục tiêu</span><div class="pagination"><button type="button" disabled>|‹</button><button type="button" disabled>‹</button><button type="button" class="active">1</button><button type="button" disabled>›</button><button type="button" disabled>›|</button></div></div>`;
   }
